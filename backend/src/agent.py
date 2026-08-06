@@ -22,7 +22,7 @@ load_dotenv(".env.local")
 
 # Change this prompt to change what your voice agent does.
 # See README.md for example prompts (customer support, language tutor, receptionist).
-SYSTEM_PROMPT = """You are a friendly and efficient customer support agent for a tech company. Help users with account issues, billing questions, and product troubleshooting. Be concise, empathetic, and solution-oriented. If you don't know something, say so honestly and offer to escalate. Your responses are concise and without complex formatting, emojis, or symbols."""
+SYSTEM_PROMPT = """You are a helpful, professional, and calm voice assistant for a Health Access service. Assist the user with navigating their healthcare options, booking appointments, or understanding their coverage. Be empathetic, patient, and concise. Your responses are concise and without complex formatting, emojis, or symbols."""
 
 
 class Assistant(Agent):
@@ -81,13 +81,12 @@ async def my_agent(ctx: JobContext):
                 voice="Anisha", 
                 locale="en-IN",
                 style="Conversation",
-                tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
-                text_pacing=True
+                tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2)
             ),
         # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
         # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
-        vad=ctx.proc.userdata["vad"],
+        vad=silero.VAD.load(min_silence_duration=0.4),
         # allow the LLM to generate a response while waiting for the end of turn
         # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
         preemptive_generation=True,
