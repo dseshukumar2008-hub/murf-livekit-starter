@@ -1,65 +1,237 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-
-function WelcomeImage() {
-  return (
-    <svg
-      width="64"
-      height="64"
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="text-fg0 mb-4 size-16"
-    >
-      <path
-        d="M15 24V40C15 40.7957 14.6839 41.5587 14.1213 42.1213C13.5587 42.6839 12.7956 43 12 43C11.2044 43 10.4413 42.6839 9.87868 42.1213C9.31607 41.5587 9 40.7957 9 40V24C9 23.2044 9.31607 22.4413 9.87868 21.8787C10.4413 21.3161 11.2044 21 12 21C12.7956 21 13.5587 21.3161 14.1213 21.8787C14.6839 22.4413 15 23.2044 15 24ZM22 5C21.2044 5 20.4413 5.31607 19.8787 5.87868C19.3161 6.44129 19 7.20435 19 8V56C19 56.7957 19.3161 57.5587 19.8787 58.1213C20.4413 58.6839 21.2044 59 22 59C22.7956 59 23.5587 58.6839 24.1213 58.1213C24.6839 57.5587 25 56.7957 25 56V8C25 7.20435 24.6839 6.44129 24.1213 5.87868C23.5587 5.31607 22.7956 5 22 5ZM32 13C31.2044 13 30.4413 13.3161 29.8787 13.8787C29.3161 14.4413 29 15.2044 29 16V48C29 48.7957 29.3161 49.5587 29.8787 50.1213C30.4413 50.6839 31.2044 51 32 51C32.7956 51 33.5587 50.6839 34.1213 50.1213C34.6839 49.5587 35 48.7957 35 48V16C35 15.2044 34.6839 14.4413 34.1213 13.8787C33.5587 13.3161 32.7956 13 32 13ZM42 21C41.2043 21 40.4413 21.3161 39.8787 21.8787C39.3161 22.4413 39 23.2044 39 24V40C39 40.7957 39.3161 41.5587 39.8787 42.1213C40.4413 42.6839 41.2043 43 42 43C42.7957 43 43.5587 42.6839 44.1213 42.1213C44.6839 41.5587 45 40.7957 45 40V24C45 23.2044 44.6839 22.4413 44.1213 21.8787C43.5587 21.3161 42.7957 21 42 21ZM52 17C51.2043 17 50.4413 17.3161 49.8787 17.8787C49.3161 18.4413 49 19.2044 49 20V44C49 44.7957 49.3161 45.5587 49.8787 46.1213C50.4413 46.6839 51.2043 47 52 47C52.7957 47 53.5587 46.6839 54.1213 46.1213C54.6839 45.5587 55 44.7957 55 44V20C55 19.2044 54.6839 18.4413 54.1213 17.8787C53.5587 17.3161 52.7957 17 52 17Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
+import { 
+  HeartPulse, 
+  Globe, 
+  Info, 
+  Mic, 
+  ShieldCheck, 
+  Clock, 
+  Users, 
+  Leaf, 
+  HeartHandshake, 
+  Check,
+  ChevronDown,
+  Shield
+} from 'lucide-react';
 
 interface WelcomeViewProps {
   startButtonText: string;
   onStartCall: () => void;
+  hasEnded?: boolean;
 }
 
 export const WelcomeView = ({
   startButtonText,
   onStartCall,
+  hasEnded,
   ref,
 }: React.ComponentProps<'div'> & WelcomeViewProps) => {
+  const [micError, setMicError] = useState(false);
+
+  const handleStartCall = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      setMicError(false);
+      onStartCall();
+    } catch (e) {
+      setMicError(true);
+    }
+  };
+
   return (
-    <div ref={ref}>
-      <section className="bg-background flex flex-col items-center justify-center text-center">
-        <WelcomeImage />
+    <div ref={ref} className="min-h-screen bg-[#f8fdfb] flex flex-col font-sans text-slate-800 selection:bg-teal-100 selection:text-teal-900">
+      {/* Header */}
+      <header className="flex justify-between items-center p-6 lg:px-12 w-full z-20">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-700 p-2 rounded-full shadow-sm text-white flex items-center justify-center">
+            <HeartPulse size={24} strokeWidth={2.5} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 leading-tight">Saathi</h1>
+            <p className="text-sm text-slate-500 font-medium">Your Voice for Better Health</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2.5">
+          <div className="text-slate-500 font-mono text-[10px] font-bold tracking-wider uppercase">
+            Built with{' '}
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://docs.livekit.io/agents"
+              className="underline underline-offset-4 hover:text-slate-800 transition-colors"
+            >
+              LiveKit Agents
+            </a>
+          </div>
 
-        <p className="text-foreground max-w-prose pt-1 leading-6 font-medium">
-          Chat live with your voice AI agent
-        </p>
+        </div>
+      </header>
 
-        <Button
-          size="lg"
-          onClick={onStartCall}
-          className="mt-6 w-64 rounded-full font-mono text-xs font-bold tracking-wider uppercase"
-        >
-          {startButtonText}
-        </Button>
-      </section>
+      {/* Main Content Container */}
+      <main className="flex-1 flex flex-col items-center px-6 lg:px-12 w-full max-w-[1400px] mx-auto pb-12 z-10 relative">
+        
+        {/* Landscape Background Illusion */}
+        <div className="absolute top-0 right-0 w-[50%] h-[600px] pointer-events-none -z-10 overflow-hidden opacity-50">
+          <div className="absolute top-40 -right-20 w-[600px] h-[600px] bg-gradient-to-t from-emerald-100/60 to-transparent rounded-[100px] rotate-45 blur-2xl"></div>
+          <div className="absolute top-20 right-40 w-[400px] h-[400px] bg-gradient-to-t from-teal-50/80 to-transparent rounded-full blur-3xl"></div>
+          <div className="absolute top-60 right-60 w-32 h-32 bg-orange-100/50 rounded-full blur-2xl"></div>
+        </div>
 
-      <div className="fixed bottom-5 left-0 flex w-full items-center justify-center">
-        <p className="text-muted-foreground max-w-prose pt-1 text-xs leading-5 font-normal text-pretty md:text-sm">
-          Need help getting set up? Check out the{' '}
-          <a
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://docs.livekit.io/agents/start/voice-ai/"
-            className="underline"
-          >
-            Voice AI quickstart
-          </a>
-          .
-        </p>
-      </div>
+        {/* Hero Section */}
+        <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8 mt-4 mb-16 relative">
+          
+          {/* Left Text */}
+          <div className="w-full lg:w-[45%] flex flex-col items-start xl:pl-8">
+            <div className="inline-flex items-center gap-2 bg-teal-50/80 text-teal-700 px-3 py-1.5 rounded-full text-xs font-bold tracking-wider mb-8 border border-teal-100/50 uppercase shadow-sm">
+              <Mic size={14} /> VOICE ASSISTANT
+            </div>
+            
+            <h2 className="text-5xl lg:text-[4rem] font-extrabold text-slate-800 tracking-tight leading-[1.1] mb-6 relative z-10">
+              I'm Saathi,<br/>
+              your <span className="text-teal-700 relative whitespace-nowrap">
+                health companion.
+                <svg className="absolute w-full h-4 -bottom-1 left-0 text-teal-200" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" /></svg>
+              </span>
+            </h2>
+            
+            <p className="text-xl text-slate-600 max-w-md mb-10 leading-relaxed font-medium">
+              Talk to me about your symptoms, wellness questions and healthy living.
+            </p>
+
+            <div className="bg-[#f0faf5] border border-emerald-100/60 p-5 rounded-[20px] max-w-sm flex items-start gap-4 shadow-sm relative z-20">
+              <div className="bg-emerald-500 p-2 rounded-xl shrink-0 text-white shadow-sm mt-0.5">
+                <ShieldCheck size={22} strokeWidth={2.5} />
+              </div>
+              <div>
+                <h4 className="font-bold text-teal-900 text-sm mb-1 leading-snug">Your Health, Your Data,<br/>Always Secure</h4>
+                <p className="text-[13px] text-slate-500 font-medium leading-snug pr-4">Your conversations are private and encrypted.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Center/Right Visual & CTA */}
+          <div className="w-full lg:w-[55%] relative flex flex-col items-center pt-8">
+            
+            <div className="relative flex flex-col items-center">
+              {/* Circular Visual */}
+              <div className="w-56 h-56 md:w-[280px] md:h-[280px] relative flex items-center justify-center mb-8">
+                {/* Dotted border ring */}
+                <div className="absolute inset-0 rounded-full border-2 border-teal-200/60 border-dashed animate-[spin_120s_linear_infinite]"></div>
+                
+                {/* Soft background glow */}
+                <div className="absolute inset-4 rounded-full bg-teal-50/50 backdrop-blur-sm"></div>
+
+                {/* Inner white circle */}
+                <div className="absolute inset-6 rounded-full bg-white shadow-2xl shadow-teal-900/10 flex items-center justify-center border border-teal-50">
+                  {/* The Heart Logo inside */}
+                  <div className="relative flex items-center justify-center w-28 h-28">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-emerald-600 drop-shadow-md">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+                      <path d="M3 12h4l2.5-4 4 10 3-6h4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Little decorative sparkles */}
+                <div className="absolute top-8 right-12 w-2 h-2 bg-teal-300 rounded-full blur-[1px]"></div>
+                <div className="absolute top-16 right-6 w-3 h-3 bg-emerald-200 rounded-full blur-[1px]"></div>
+                <div className="absolute bottom-12 left-10 w-2 h-2 bg-mint-300 rounded-full blur-[1px]" style={{backgroundColor: '#a7f3d0'}}></div>
+              </div>
+
+              <h3 className="text-[28px] font-bold text-slate-800 mb-2 tracking-tight">
+                {hasEnded ? 'Conversation ended' : 'Chat live with Saathi'}
+              </h3>
+              <p className="text-slate-500 font-medium mb-8 text-[15px]">I'm here to listen and help.</p>
+              
+              <button
+                onClick={handleStartCall}
+                className="group relative flex items-center gap-3 bg-gradient-to-b from-[#f98a48] to-[#f46824] text-white px-10 py-[18px] rounded-[30px] font-bold text-[17px] shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-all w-full min-w-[280px] max-w-sm justify-center"
+              >
+                <Mic size={22} className="group-hover:animate-pulse" />
+                {hasEnded ? 'Talk Again' : 'Talk to Saathi'}
+              </button>
+              
+              {micError && (
+                <p className="text-red-500 mt-5 max-w-sm text-xs font-semibold text-center bg-red-50 p-3 rounded-xl border border-red-100 absolute -bottom-20">
+                  We need microphone access to talk with you. Please enable microphone permissions in your browser settings and try again.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Benefits Row */}
+        <div className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-4 mb-10 relative z-20">
+          <div className="flex items-start gap-4 flex-1">
+            <div className="bg-[#eefcf5] p-3 rounded-full shrink-0 text-emerald-500"><ShieldCheck size={26} strokeWidth={2.2}/></div>
+            <div>
+              <h4 className="font-bold text-slate-800 text-[15px] mb-0.5">Private & Secure</h4>
+              <p className="text-[13px] text-slate-500 leading-snug font-medium">Your data stays private<br/>and protected</p>
+            </div>
+          </div>
+          <div className="hidden lg:block w-px h-12 bg-slate-100"></div>
+          
+          <div className="flex items-start gap-4 flex-1">
+            <div className="bg-[#eaf8f8] p-3 rounded-full shrink-0 text-teal-500"><Clock size={26} strokeWidth={2.2}/></div>
+            <div>
+              <h4 className="font-bold text-slate-800 text-[15px] mb-0.5">24/7 Assistance</h4>
+              <p className="text-[13px] text-slate-500 leading-snug font-medium">Get help anytime,<br/>anywhere</p>
+            </div>
+          </div>
+          <div className="hidden lg:block w-px h-12 bg-slate-100"></div>
+          
+          <div className="flex items-start gap-4 flex-1">
+            <div className="bg-[#f2effb] p-3 rounded-full shrink-0 text-purple-500"><Users size={26} strokeWidth={2.2}/></div>
+            <div>
+              <h4 className="font-bold text-slate-800 text-[15px] mb-0.5">Health for All</h4>
+              <p className="text-[13px] text-slate-500 leading-snug font-medium">Accessible care<br/>for everyone</p>
+            </div>
+          </div>
+          <div className="hidden lg:block w-px h-12 bg-slate-100"></div>
+          
+          <div className="flex items-start gap-4 flex-1">
+            <div className="bg-[#f0f8e9] p-3 rounded-full shrink-0 text-lime-600"><Leaf size={26} strokeWidth={2.2}/></div>
+            <div>
+              <h4 className="font-bold text-slate-800 text-[15px] mb-0.5">Trusted Information</h4>
+              <p className="text-[13px] text-slate-500 leading-snug font-medium">Guidance based on reliable<br/>health knowledge</p>
+            </div>
+          </div>
+        </div>
+
+        {/* How Saathi Can Help Section */}
+        <div className="w-full bg-[#f4f7fc] border border-blue-50 rounded-3xl py-8 px-6 lg:px-8 flex flex-col gap-8 mb-8 relative z-20 shadow-sm">
+          <div className="flex flex-col xl:flex-row items-center justify-between gap-8 xl:gap-4 w-full">
+            <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
+              <div className="text-indigo-800 bg-white w-14 h-14 rounded-full shadow-sm shrink-0 border border-indigo-50 flex items-center justify-center">
+                <HeartHandshake size={28} strokeWidth={2.2} />
+              </div>
+              <h3 className="text-[22px] font-bold text-slate-800 tracking-tight text-center sm:text-left">How Saathi Can Help</h3>
+            </div>
+            
+            <div className="flex flex-row flex-wrap xl:flex-nowrap justify-center xl:justify-end gap-3 w-full">
+              <div className="bg-white px-4 lg:px-5 py-3 rounded-full flex items-center gap-2.5 text-[13.5px] lg:text-[14px] font-semibold text-slate-700 shadow-sm whitespace-nowrap"><Check size={18} strokeWidth={3} className="text-emerald-600 shrink-0"/> Understand your symptoms</div>
+              <div className="bg-white px-4 lg:px-5 py-3 rounded-full flex items-center gap-2.5 text-[13.5px] lg:text-[14px] font-semibold text-slate-700 shadow-sm whitespace-nowrap"><Check size={18} strokeWidth={3} className="text-emerald-600 shrink-0"/> Learn about healthy habits</div>
+              <div className="bg-white px-4 lg:px-5 py-3 rounded-full flex items-center gap-2.5 text-[13.5px] lg:text-[14px] font-semibold text-slate-700 shadow-sm whitespace-nowrap"><Check size={18} strokeWidth={3} className="text-emerald-600 shrink-0"/> Get general wellness guidance</div>
+              <div className="bg-white px-4 lg:px-5 py-3 rounded-full flex items-center gap-2.5 text-[13.5px] lg:text-[14px] font-semibold text-slate-700 shadow-sm whitespace-nowrap"><Check size={18} strokeWidth={3} className="text-emerald-600 shrink-0"/> Know when to seek help</div>
+            </div>
+          </div>
+          
+          <div className="text-center w-full border-t border-blue-100/60 pt-6">
+            <p className="text-[13.5px] font-medium text-slate-600 mb-1">Note: I am not a doctor and cannot diagnose or prescribe medicines.</p>
+            <p className="text-[13.5px] font-medium text-slate-600">For emergencies, please contact your <span className="text-[#e25d5d] font-semibold">local emergency services</span>.</p>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="w-full bg-[#11674e] text-white py-3.5 px-6 mt-auto shrink-0 relative z-30">
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2.5 text-[13px] font-medium text-emerald-50/90 text-center flex-wrap">
+          <Shield size={16} className="text-emerald-100 shrink-0" strokeWidth={2.5} />
+          <p>This is not a replacement for professional medical advice. In case of emergency, please contact your local emergency services.</p>
+        </div>
+      </footer>
     </div>
   );
 };

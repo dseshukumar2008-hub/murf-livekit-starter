@@ -37,16 +37,16 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   pageTitle: 'Voice Agent Starter',
   pageDescription: 'A voice agent powered by Murf Falcon — the fastest TTS API',
 
-  supportsChatInput: true,
+  supportsChatInput: false,
   supportsVideoInput: true,
   supportsScreenShare: true,
   isPreConnectBufferEnabled: true,
 
   logo: '/murf-logo.svg',
-  accent: '#6366F1',
+  accent: '#f59e0b', // amber
   logoDark: '/murf-logo-dark.svg',
-  accentDark: '#818cf8',
-  startButtonText: 'Start talking',
+  accentDark: '#fbbf24', // lighter amber
+  startButtonText: 'Talk to Saathi',
 
   // optional: audio visualization configuration
   // audioVisualizerType: 'bar',
