@@ -1,5 +1,8 @@
 import logging
-
+import sqlite3
+import json
+import os
+from datetime import datetime
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -12,6 +15,9 @@ from livekit.agents import (
     inference,
     tokenize,
     room_io,
+    function_tool,
+    RunContext,
+    get_job_context,
 )
 from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -19,6 +25,26 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
+
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "callers.db"))
+
+def init_db():
+    logger.info(f"Initializing database at {DB_PATH}")
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS callers (
+            user_id TEXT PRIMARY KEY,
+            name TEXT,
+            language_preference TEXT,
+            facts TEXT,
+            last_interaction TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # Change this prompt to change what your voice agent does.
 # See README.md for example prompts (customer support, language tutor, receptionist).
@@ -57,11 +83,10 @@ GUARDRAILS
 - Never name a specific prescription drug or give a dosage.
 - Escalate immediately for red-flag symptoms — chest pain, difficulty 
   breathing, severe bleeding, fainting/unconsciousness, symptoms in an 
-  infant under 1, or pregnancy complications. Escalation script: "Yeh 
-  serious ho sakta hai. Please turant nearest hospital jaayein ya 
-  emergency number par call karein. Main iske liye advice nahi de 
-  sakti." (This could be serious. Please go to the nearest hospital 
-  right away or call the emergency number. I can't advise on this.)
+  infant under 1, or pregnancy complications. Escalation script: "This 
+  could be serious. Please go to the nearest hospital right away or 
+  call the emergency number. I can't advise on this." (Translate this 
+  escalation dynamically into the caller's current language).
 - Never claim to be a doctor, nurse, or any licensed medical 
   professional.
 - Never guarantee that a scheme application will be approved, or state 
@@ -69,42 +94,194 @@ GUARDRAILS
   criteria and next steps.
 - If asked something entirely outside health/scheme support (e.g. 
   general chit-chat unrelated to health, or requests to do unrelated 
-  tasks), politely redirect: "Main sirf health se related madad kar 
-  sakti hoon — is baare mein main help nahi kar sakti."
+  tasks), politely redirect: "I can only help with health-related 
+  issues — I cannot help with this." (Translate dynamically).
 
 STYLE
 Keep sentences short — under ~15-20 words, since this is spoken, not 
 read. No bullet points, no brackets, no lists read aloud. One idea per 
 sentence. If the caller goes silent for a few seconds, gently re-prompt 
-once ("Aap wahin hain? Main sun rahi hoon.") before offering to end the 
-call gracefully. Speak at a calm, unhurried pace — this caller may be 
-anxious or in discomfort.
+once ("Are you there? I am listening.") before offering to end the call. 
+CONSENT BEFORE SAVING — HARD RULE
+When a new caller provides information that would be useful in future conversations (like age or ongoing conditions):
+- Use the save_caller_info() tool to propose saving the information.
+- IMPORTANT: When calling save_caller_info(), you MUST call the tool SILENTLY. Do NOT generate any conversational text in the same turn.
+- The application will automatically pause the conversation and instruct you to ask for consent.
+- Wait for the caller's answer.
+- Call register_consent_response(approved=True/False) depending on their answer.
 
-INITIAL GREETING
-When the call connects, you may speak first. If you speak first without any caller input, greet them neutrally in a mix of Hindi and English: "Namaste, I am Saathi. Aap kaise hain? How can I help you today?" 
-If the caller speaks first, detect their language immediately and mirror it perfectly in your first response (e.g., if they say "Hello", you say "Hello"; if they say "Namaste", you say "Namaste")."""
+LANGUAGE & SCRIPT
+Always respond in the language the caller is currently using.
+Always use the native script for that language.
+Hindi → Devanagari. Example: नमस्ते (Never romanize Hindi as "namaste").
+English → English alphabet.
+Telugu → Telugu script.
+Do not translate an English conversation into Hindi unless the caller asks for Hindi.
+Do not translate a Hindi conversation into English unless the caller asks for English.
+"""
 
 
 class Assistant(Agent):
-    def __init__(self) -> None:
-        super().__init__(instructions=SYSTEM_PROMPT)
+    def __init__(self, instructions: str) -> None:
+        super().__init__(instructions=instructions)
+        self.memory_state = "NORMAL_CONVERSATION"
+        self.pending_memory = None
 
-    # To add tools, use the @function_tool decorator.
-    # Here's an example that adds a simple weather tool.
-    # You also have to add `from livekit.agents import function_tool, RunContext` to the top of this file
-    # @function_tool
-    # async def lookup_weather(self, context: RunContext, location: str):
-    #     """Use this tool to look up current weather information in the given location.
-    #
-    #     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
-    #
-    #     Args:
-    #         location: The location to look up weather information for (e.g. city name)
-    #     """
-    #
-    #     logger.info(f"Looking up weather for {location}")
-    #
-    #     return "sunny with a temperature of 70 degrees."
+    @function_tool
+    async def register_consent_response(self, context: RunContext, approved: bool, ambiguous: bool = False):
+        """Call this tool when the user answers your consent question."""
+        if self.memory_state != "WAITING_FOR_CONSENT":
+            return "No consent pending."
+            
+        if ambiguous:
+            logger.info("[Memory Debug] Consent response: AMBIGUOUS")
+            logger.info("[Memory Debug] Asking consent again")
+            # Explicitly force the question again
+            import asyncio
+            consent_q = "Would you like me to remember this information to help you better in future conversations?"
+            asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))
+            return "APPLICATION OVERRIDE: You must ask the user for consent right now."
+            
+        if approved:
+            logger.info("[Memory Debug] Consent APPROVED")
+            logger.info("[Memory Debug] Saving pending memory")
+            
+            pending_mem = self.pending_memory or {}
+            facts = pending_mem.get("facts", {})
+            name = facts.get("name")
+            language_preference = facts.get("language_preference")
+            age_band = facts.get("age_band")
+            ongoing_conditions = facts.get("ongoing_conditions")
+            last_triage_outcome = facts.get("last_triage_outcome")
+            
+            participant = context.session.room_io.linked_participant
+            if participant and pending_mem:
+                user_id = participant.identity
+                
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT facts FROM callers WHERE user_id = ?", (user_id,))
+                row = cursor.fetchone()
+                
+                existing_facts = {}
+                if row and row[0]:
+                    try:
+                        existing_facts = json.loads(row[0])
+                    except ValueError:
+                        pass
+                        
+                if age_band is not None:
+                    existing_facts["age_band"] = age_band
+                if ongoing_conditions is not None:
+                    existing_facts["ongoing_conditions"] = ongoing_conditions
+                if last_triage_outcome is not None:
+                    existing_facts["last_triage_outcome"] = last_triage_outcome
+                    
+                facts_json = json.dumps(existing_facts) if existing_facts else None
+                now = datetime.now().isoformat()
+                
+                if row:
+                    updates = []
+                    params = []
+                    if name is not None:
+                        updates.append("name = ?")
+                        params.append(name)
+                    if language_preference is not None:
+                        updates.append("language_preference = ?")
+                        params.append(language_preference)
+                        
+                    updates.append("facts = ?")
+                    params.append(facts_json)
+                    updates.append("last_interaction = ?")
+                    params.append(now)
+                    params.append(user_id)
+                    
+                    query = f"UPDATE callers SET {', '.join(updates)} WHERE user_id = ?"
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(
+                        "INSERT INTO callers (user_id, name, language_preference, facts, last_interaction) VALUES (?, ?, ?, ?, ?)",
+                        (user_id, name, language_preference, facts_json, now)
+                    )
+                conn.commit()
+                conn.close()
+
+            self.pending_memory = None
+            self.memory_state = "CONSENT_APPROVED"
+            return "Memory successfully saved. You can acknowledge this and continue the conversation."
+        else:
+            logger.info("[Memory Debug] Consent DENIED")
+            logger.info("[Memory Debug] Discarding pending memory")
+            self.memory_state = "NORMAL_CONVERSATION"
+            self.pending_memory = None
+            return "Consent denied. The information was NOT saved."
+
+    @function_tool
+    async def lookup_caller(self, context: RunContext):
+        """Use this tool to manually look up the current caller's saved facts if needed during the conversation."""
+        
+        participant = context.session.room_io.linked_participant
+        if not participant:
+            logger.error("lookup_caller: No linked participant found in room")
+            return "Caller not found. This is a new caller."
+            
+        user_id = participant.identity
+        logger.info(f"Looking up caller {user_id}")
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, language_preference, facts, last_interaction FROM callers WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            name, lang, facts, last_interaction = row
+            return f"Caller found. Name: {name}, Language Preference: {lang}, Facts: {facts}, Last interaction: {last_interaction}"
+        else:
+            return "Caller not found. This is a new caller."
+
+
+    @function_tool
+    async def save_caller_info(
+        self,
+        context: RunContext,
+        name: str = None,
+        language_preference: str = None,
+        age_band: str = None,
+        ongoing_conditions: str = None,
+        last_triage_outcome: str = None,
+    ):
+        """Save caller information to the database."""
+        
+        if self.memory_state == "NORMAL_CONVERSATION":
+            self.pending_memory = {
+                "facts": {
+                    "name": name,
+                    "language_preference": language_preference,
+                    "age_band": age_band,
+                    "ongoing_conditions": ongoing_conditions,
+                    "last_triage_outcome": last_triage_outcome
+                }
+            }
+            self.memory_state = "WAITING_FOR_CONSENT"
+            logger.info("[Memory Debug] Memory candidate submitted by LLM")
+            logger.info("[Memory Debug] State changed: WAITING_FOR_CONSENT")
+            logger.info("[Memory Debug] Normal response blocked. Triggering consent question.")
+            
+            # Explicitly trigger the consent question via LiveKit synthesis
+            import asyncio
+            # Fallback to English, but if we can infer language we should. 
+            # In save_caller_info we don't have msg.language, but we can assume English for the test.
+            consent_q = "Would you like me to remember this information to help you better in future conversations?"
+            asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))
+            
+            return "APPLICATION OVERRIDE: Stop generating any further response. The application has just asked the user for consent on your behalf. Wait for the user to answer 'yes' or 'no'."
+            
+        if self.memory_state != "CONSENT_APPROVED":
+            logger.info("[Memory Debug] save_caller_info blocked")
+            return "APPLICATION OVERRIDE: Memory operation blocked. Consent not approved."
+            
+        logger.info(f"[Memory Debug] Saving data for user {context.session.room_io.linked_participant}")
 
 
 server = AgentServer()
@@ -178,12 +355,27 @@ async def my_agent(ctx: JobContext):
         turn_timing["user_stop"] = time.time()
 
     @session.on("user_speech_committed")
-    def on_user_speech_committed(*args, **kwargs):
+    def on_user_speech_committed(msg, *args, **kwargs):
         turn_timing["user_commit"] = time.time()
+        transcript = msg.alternatives[0].text if hasattr(msg, "alternatives") and msg.alternatives else getattr(msg, "text", "")
+        lang = getattr(msg, 'language', getattr(msg, 'language_code', 'en'))
+        
+        logger.info("[Memory Debug] User message received")
+        logger.info(f"[Language Debug] User transcript: {transcript}")
+        logger.info(f"[Language Debug] Detected language: {lang}")
+        logger.info(f"[Language Debug] Current conversation language: {lang}")
+        logger.info(f"[Language Debug] USER: {lang}")
+        
+        # PROGRAMMATIC LANGUAGE ENFORCEMENT PER TURN for normal responses
+        session.chat_ctx.append(
+            role="system",
+            text=f"CRITICAL INSTRUCTION FOR THIS TURN ONLY: The user is currently speaking language code '{lang}'. You MUST generate your response in this exact language. Do not default to Hindi if '{lang}' is 'en'."
+        )
 
     @session.on("agent_started_speaking")
     def on_agent_started_speaking(*args, **kwargs):
         now = time.time()
+        logger.info("[Language Debug] LLM OUTPUT LANGUAGE: (dynamically generated by LLM)")
         if "user_stop" in turn_timing:
             latency = now - turn_timing["user_stop"]
             logger.info(f"--- [LATENCY METRIC] user_stopped_speaking -> agent_started_speaking: {latency:.3f} seconds")
@@ -191,9 +383,64 @@ async def my_agent(ctx: JobContext):
             latency = now - turn_timing["user_commit"]
             logger.info(f"--- [LATENCY METRIC] user_speech_committed -> agent_started_speaking: {latency:.3f} seconds")
 
+    # Join the room and connect to the user
+    await ctx.connect()
+    
+    logger.info("[Memory] Agent session started")
+    participant = await ctx.wait_for_participant()
+    user_id = participant.identity
+    logger.info(f"[Memory] Linked participant identity: {user_id}")
+    logger.info("[Memory] Looking up caller")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, facts FROM callers WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    dynamic_prompt = SYSTEM_PROMPT
+    if row and row[0]:
+        caller_name = row[0]
+        caller_facts = row[1] if row[1] else "None"
+        logger.info("[Memory] Caller found: true")
+        logger.info("[Memory] Conversation state: RETURNING_CALLER")
+        logger.info(f"[Memory] Returning caller name loaded: {caller_name}")
+        
+        greeting_instructions = f"""
+RETURNING CALLER
+The caller has been identified as a returning caller.
+Their stored name is: {caller_name}
+Their stored facts from previous conversations are: {caller_facts}
+
+Use their stored name naturally ({caller_name}).
+Welcome them back and gently acknowledge/continue from the stored facts if appropriate. For example: "Namaste Ramesh, last time we spoke about your fever. How are you feeling now?"
+Respond in the language the caller is currently using.
+Do not assume the stored language preference is the current language.
+If the caller is speaking English, greet them in English (e.g. "Welcome back, {caller_name}!").
+If the caller is speaking Hindi, greet them in Hindi using Devanagari (e.g. "नमस्ते {caller_name}! वापस स्वागत है।").
+If the caller is speaking another supported language, use that language's native script.
+Do NOT ask for their name again.
+"""
+        dynamic_prompt = greeting_instructions + dynamic_prompt
+    else:
+        logger.info("[Memory] Caller found: false")
+        logger.info("[Memory] Conversation state: NEW_CALLER")
+        logger.info("[Memory] Initial greeting: asking for name")
+        
+        greeting_instructions = """
+NEW CALLER
+You are speaking to a new caller.
+Your very first words MUST be to ask for their name in a neutral/default greeting appropriate for the current conversation configuration.
+Example (if English): "Hello, I am Saathi. May I know your name?"
+Example (if Hindi): "नमस्ते, मैं साथी हूँ। क्या मैं आपका नाम जान सकती हूँ?"
+"""
+        dynamic_prompt = greeting_instructions + dynamic_prompt
+
+    my_assistant = Assistant(instructions=dynamic_prompt)
+
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(),
+        agent=my_assistant,
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
@@ -206,9 +453,6 @@ async def my_agent(ctx: JobContext):
             ),
         ),
     )
-
-    # Join the room and connect to the user
-    await ctx.connect()
 
 
 if __name__ == "__main__":
