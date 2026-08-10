@@ -198,6 +198,45 @@ See the Configuration section below for voice, STT, and LLM options.
 
 ---
 
+## Day 5 — Tools
+
+### `classify_triage_level`
+A rule-based (non-LLM) triage classifier. It takes the symptoms, duration,
+and any severity flags the caller mentioned and returns one of four levels:
+`mild`, `moderate`, `urgent`, or `needs_more_info`, along with a
+recommended next action. Red-flag keywords (chest pain, difficulty
+breathing, severe bleeding, fainting, infant under 1, pregnancy
+complications) and symptoms lasting more than 5 days are automatically
+escalated to `urgent`.
+
+### `find_nearest_facility`
+Looks up a nearby PHC/clinic or hospital based on the caller's district
+and the required care level (`clinic` for moderate cases, `hospital` for
+urgent cases). Chained automatically after `classify_triage_level` returns
+`moderate` or `urgent` — the agent asks for the caller's district if it
+doesn't already have it, then calls this tool before giving its final
+recommendation.
+
+**Data source:** This is a **hand-built local dataset** (`facilities.json`),
+not a live government API. It currently covers Hyderabad, Bangalore, and
+Delhi. We used a local dataset because there is no free, structured,
+publicly available API for PHC/hospital directories at this scope — a
+production version of this would integrate with a government or state
+health department facility API.
+
+**Freshness:** The agent tells the caller this is coming from its "local
+facility directory" and states when that directory was last updated, so
+callers know the data isn't live/real-time.
+
+**Failure handling:** If the caller's district isn't in the local dataset,
+or the data file can't be read, the tool returns a graceful fallback
+message instead of guessing — the agent tells the caller it doesn't have
+a listed facility for their area and suggests calling the district health
+helpline or 108 emergency services, rather than inventing a clinic name
+or address.
+
+---
+
 ## Configuration
 
 ### Murf voice

@@ -404,21 +404,14 @@ class Assistant(Agent):
         district_lower = district.lower()
         care_level_lower = care_level.lower()
         
-        # A simple mocked database of facilities for demo purposes
-        MOCK_FACILITIES = {
-            "hyderabad": {
-                "hospital": {"name": "Osmania General Hospital", "phone": "040-24600146"},
-                "clinic": {"name": "Basti Dawakhana, Banjara Hills", "phone": "104"}
-            },
-            "bangalore": {
-                "hospital": {"name": "Victoria Hospital", "phone": "080-26701150"},
-                "clinic": {"name": "Namma Clinic, Indiranagar", "phone": "104"}
-            },
-            "delhi": {
-                "hospital": {"name": "AIIMS", "phone": "011-26588500"},
-                "clinic": {"name": "Mohalla Clinic, Hauz Khas", "phone": "104"}
-            }
-        }
+        # Load from hand-built local dataset (facilities.json)
+        facilities_path = os.path.join(os.path.dirname(__file__), "..", "facilities.json")
+        try:
+            with open(facilities_path, "r", encoding="utf-8") as f:
+                MOCK_FACILITIES = json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading facilities.json: {e}")
+            MOCK_FACILITIES = {}
         
         # We can implement fuzzy matching or fallback here
         for known_dist, facilities in MOCK_FACILITIES.items():
@@ -428,12 +421,13 @@ class Assistant(Agent):
                     return json.dumps({
                         "status": "ok",
                         "facility_name": fac["name"],
-                        "phone": fac["phone"]
+                        "phone": fac["phone"],
+                        "spoken_fallback": "I found a facility in our local directory (updated recently)."
                     })
                     
         return json.dumps({
             "status": "not_found",
-            "spoken_fallback": "I'm sorry, I couldn't find a specific facility in my directory for that area. Please check with your local health worker or search online for the nearest one."
+            "spoken_fallback": "I'm sorry, I couldn't find a specific facility in my directory for that area. Please call your district health helpline or 108 emergency services for the nearest one."
         })
 
 

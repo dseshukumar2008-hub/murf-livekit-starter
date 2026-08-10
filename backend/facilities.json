@@ -1,0 +1,14 @@
+{
+  "hyderabad": {
+    "hospital": { "name": "Osmania General Hospital", "phone": "040-24600146" },
+    "clinic": { "name": "Basti Dawakhana, Banjara Hills", "phone": "104" }
+  },
+  "bangalore": {
+    "hospital": { "name": "Victoria Hospital", "phone": "080-26701150" },
+    "clinic": { "name": "Namma Clinic, Indiranagar", "phone": "104" }
+  },
+  "delhi": {
+    "hospital": { "name": "AIIMS", "phone": "011-26588500" },
+    "clinic": { "name": "Mohalla Clinic, Hauz Khas", "phone": "104" }
+  }
+}
