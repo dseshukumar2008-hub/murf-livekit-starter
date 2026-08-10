@@ -77,6 +77,7 @@ access to the caller's medical records, lab results, or any personal
 health history unless they tell you in this conversation. If you don't 
 know something, say so plainly and suggest who they should ask instead 
 (a doctor, ASHA worker, or the scheme's helpline).
+
 GUARDRAILS
 - Never diagnose. Never say "you have X." Only describe what symptoms 
   can be associated with, and what to do next.
@@ -102,6 +103,7 @@ Keep sentences short — under ~15-20 words, since this is spoken, not
 read. No bullet points, no brackets, no lists read aloud. One idea per 
 sentence. If the caller goes silent for a few seconds, gently re-prompt 
 once ("Are you there? I am listening.") before offering to end the call. 
+
 CONSENT BEFORE SAVING — HARD RULE
 When a new caller provides information that would be useful in future conversations (like age or ongoing conditions):
 - Use the save_caller_info() tool to propose saving the information.
@@ -118,6 +120,20 @@ English → English alphabet.
 Telugu → Telugu script.
 Do not translate an English conversation into Hindi unless the caller asks for Hindi.
 Do not translate a Hindi conversation into English unless the caller asks for English.
+
+TRIAGE CLASSIFICATION
+When the caller describes their symptoms and implicitly or explicitly asks what they should do, use the `classify_triage_level` tool to evaluate the severity.
+When this tool returns a result, you must translate it into natural spoken guidance.
+NEVER read out raw JSON, field names, or the exact word "triage_level" out loud.
+Speak the `recommended_action` naturally, in your own warm tone, maintaining the rule that you do not diagnose, but rather advise on what they should do next based on the triage level.
+
+FACILITY LOOKUP — CHAINED AFTER TRIAGE
+If `classify_triage_level` returns a triage_level of "moderate" or "urgent", you must find the caller a real place to go before ending your answer:
+1. If you do not already know the caller's district or area, ask for it first ("Which area or district are you in?").
+2. Once you have it, silently call `find_nearest_facility` with that district and the appropriate care_level ("clinic" for moderate, "hospital" for urgent).
+3. If the tool returns status "ok", speak the facility's name and phone number naturally as part of your recommendation, and mention that this is from your local facility directory.
+4. If the tool returns status "unavailable" or "not_found", speak the `spoken_fallback` text from the tool result exactly as your guidance. Do NOT invent a facility name, address, or phone number under any circumstances — if the tool can't find one, say so honestly.
+5. Do NOT call `find_nearest_facility` when triage_level is "mild" or "needs_more_info" — self-care advice does not need a facility referral.
 """
 
 
@@ -126,6 +142,8 @@ class Assistant(Agent):
         super().__init__(instructions=instructions)
         self.memory_state = "NORMAL_CONVERSATION"
         self.pending_memory = None
+        self.current_profile_id = None
+        self.current_profile_name = None
 
     @function_tool
     async def register_consent_response(self, context: RunContext, approved: bool, ambiguous: bool = False):
@@ -154,13 +172,11 @@ class Assistant(Agent):
             ongoing_conditions = facts.get("ongoing_conditions")
             last_triage_outcome = facts.get("last_triage_outcome")
             
-            participant = context.session.room_io.linked_participant
-            if participant and pending_mem:
-                user_id = participant.identity
+            if self.current_profile_id and pending_mem:
                 
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                cursor.execute("SELECT facts FROM callers WHERE user_id = ?", (user_id,))
+                cursor.execute("SELECT facts FROM caller_profiles WHERE profile_id = ?", (self.current_profile_id,))
                 row = cursor.fetchone()
                 
                 existing_facts = {}
@@ -186,6 +202,8 @@ class Assistant(Agent):
                     if name is not None:
                         updates.append("name = ?")
                         params.append(name)
+                        updates.append("normalized_name = ?")
+                        params.append(name.strip().lower())
                     if language_preference is not None:
                         updates.append("language_preference = ?")
                         params.append(language_preference)
@@ -194,15 +212,10 @@ class Assistant(Agent):
                     params.append(facts_json)
                     updates.append("last_interaction = ?")
                     params.append(now)
-                    params.append(user_id)
+                    params.append(self.current_profile_id)
                     
-                    query = f"UPDATE callers SET {', '.join(updates)} WHERE user_id = ?"
+                    query = f"UPDATE caller_profiles SET {', '.join(updates)} WHERE profile_id = ?"
                     cursor.execute(query, params)
-                else:
-                    cursor.execute(
-                        "INSERT INTO callers (user_id, name, language_preference, facts, last_interaction) VALUES (?, ?, ?, ?, ?)",
-                        (user_id, name, language_preference, facts_json, now)
-                    )
                 conn.commit()
                 conn.close()
 
@@ -217,8 +230,84 @@ class Assistant(Agent):
             return "Consent denied. The information was NOT saved."
 
     @function_tool
-    async def lookup_caller(self, context: RunContext):
-        """Use this tool to manually look up the current caller's saved facts if needed during the conversation."""
+    async def classify_triage_level(self, context: RunContext, symptoms: list[str], duration_days: int | None = None, severity_flags: list[str] | None = None):
+        """Call this tool whenever the caller describes symptoms they are experiencing and needs guidance on how serious it is or what to do next. Do not call this for general health questions unrelated to a specific complaint."""
+        
+        if not symptoms or len(symptoms) == 0:
+            return json.dumps({
+                "triage_level": "needs_more_info",
+                "reasoning": "no specific symptoms provided",
+                "recommended_action": "I need a little more detail. Could you tell me exactly what symptoms you are experiencing?"
+            })
+            
+        symptoms_lower = [s.lower() for s in symptoms]
+        flags_lower = [f.lower() for f in (severity_flags or [])]
+        
+        urgent_triggers = [
+            "chest_pain", "difficulty_breathing", "severe_bleeding", 
+            "fainting", "pregnancy complications", "high fever", "very high fever"
+        ]
+        
+        # Check for urgent condition
+        is_urgent = False
+        reasoning = ""
+        
+        for flag in flags_lower:
+            if any(t in flag for t in urgent_triggers):
+                is_urgent = True
+                reasoning = f"red flag detected: {flag}"
+                break
+                
+        # Also check symptoms for urgent triggers
+        if not is_urgent:
+            for sym in symptoms_lower:
+                if "103" in sym or any(t in sym for t in urgent_triggers):
+                    is_urgent = True
+                    reasoning = f"red flag detected in symptom: {sym}"
+                    break
+        
+        # Check age/duration urgent triggers
+        if not is_urgent and any("infant" in f or "under 1" in f for f in flags_lower + symptoms_lower):
+            is_urgent = True
+            reasoning = "infant under 1 year"
+            
+        if not is_urgent and duration_days is not None and duration_days > 5:
+            is_urgent = True
+            reasoning = f"symptoms lasting {duration_days} days without improvement"
+            
+        if is_urgent:
+            return json.dumps({
+                "triage_level": "urgent",
+                "reasoning": reasoning,
+                "recommended_action": "This sounds like it could be serious. Please go to the nearest hospital right away or call the emergency number."
+            })
+            
+        # Check for moderate condition
+        is_moderate = False
+        if len(symptoms) > 1:
+            is_moderate = True
+            reasoning = "multiple symptoms combined"
+        elif duration_days is not None and duration_days >= 2:
+            is_moderate = True
+            reasoning = f"symptom lasting {duration_days} days"
+            
+        if is_moderate:
+            return json.dumps({
+                "triage_level": "moderate",
+                "reasoning": reasoning,
+                "recommended_action": "You should visit the nearest primary health center or clinic to get this checked by a doctor."
+            })
+            
+        # Default to mild
+        return json.dumps({
+            "triage_level": "mild",
+            "reasoning": "single mild symptom, short duration, no red flags",
+            "recommended_action": "This sounds mild. Please rest, stay hydrated, and if it doesn't improve in a day or two, visit a clinic."
+        })
+
+    @function_tool
+    async def lookup_caller(self, context: RunContext, name: str):
+        """Use this tool to look up or create the caller's profile after they tell you their name. You MUST call this tool as soon as they provide their name."""
         
         participant = context.session.room_io.linked_participant
         if not participant:
@@ -226,30 +315,56 @@ class Assistant(Agent):
             return "Caller not found. This is a new caller."
             
         user_id = participant.identity
-        logger.info(f"Looking up caller {user_id}")
+        normalized_name = name.strip().lower()
+        
+        logger.info(f"[Identity] Looking up profile for user_id={user_id} name={name}")
         
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT name, language_preference, facts, last_interaction FROM callers WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT profile_id, name, language_preference, facts, last_interaction FROM caller_profiles WHERE user_id = ? AND normalized_name = ?", (user_id, normalized_name))
         row = cursor.fetchone()
-        conn.close()
         
         if row:
-            name, lang, facts, last_interaction = row
-            return f"Caller found. Name: {name}, Language Preference: {lang}, Facts: {facts}, Last interaction: {last_interaction}"
+            profile_id, stored_name, lang, facts, last_interaction = row
+            self.current_profile_id = profile_id
+            self.current_profile_name = stored_name
+            logger.info(f"[Identity] Existing profile found: profile_id={profile_id}")
+            logger.info(f"[Memory] Active profile: {profile_id}")
+            conn.close()
+            return f"Profile found. Name: {stored_name}, Language Preference: {lang}, Facts: {facts}, Last interaction: {last_interaction}. You may now say 'Welcome back, {stored_name}!' and naturally refer to their past facts."
         else:
-            return "Caller not found. This is a new caller."
+            import uuid
+            from datetime import datetime
+            
+            profile_id = f"profile_{uuid.uuid4().hex[:8]}"
+            now = datetime.now().isoformat()
+            
+            logger.info(f"[Identity] No profile found for this name")
+            logger.info(f"[Identity] Creating new profile: profile_id={profile_id}")
+            logger.info(f"[Memory] Active profile: {profile_id}")
+            
+            cursor.execute(
+                "INSERT INTO caller_profiles (profile_id, user_id, name, normalized_name, last_interaction) VALUES (?, ?, ?, ?, ?)",
+                (profile_id, user_id, name, normalized_name, now)
+            )
+            conn.commit()
+            conn.close()
+            
+            self.current_profile_id = profile_id
+            self.current_profile_name = name
+            
+            return f"New profile created for {name}. They have no past memories. You may now say 'Nice to meet you, {name}!' and start a fresh conversation."
 
 
     @function_tool
     async def save_caller_info(
         self,
         context: RunContext,
-        name: str = None,
-        language_preference: str = None,
-        age_band: str = None,
-        ongoing_conditions: str = None,
-        last_triage_outcome: str = None,
+        name: str | None = None,
+        language_preference: str | None = None,
+        age_band: str | None = None,
+        ongoing_conditions: str | None = None,
+        last_triage_outcome: str | None = None,
     ):
         """Save caller information to the database."""
         
@@ -282,6 +397,44 @@ class Assistant(Agent):
             return "APPLICATION OVERRIDE: Memory operation blocked. Consent not approved."
             
         logger.info(f"[Memory Debug] Saving data for user {context.session.room_io.linked_participant}")
+
+    @function_tool
+    async def find_nearest_facility(self, context: RunContext, district: str, care_level: str):
+        """Use this tool to find the nearest clinic or hospital in a given district."""
+        district_lower = district.lower()
+        care_level_lower = care_level.lower()
+        
+        # A simple mocked database of facilities for demo purposes
+        MOCK_FACILITIES = {
+            "hyderabad": {
+                "hospital": {"name": "Osmania General Hospital", "phone": "040-24600146"},
+                "clinic": {"name": "Basti Dawakhana, Banjara Hills", "phone": "104"}
+            },
+            "bangalore": {
+                "hospital": {"name": "Victoria Hospital", "phone": "080-26701150"},
+                "clinic": {"name": "Namma Clinic, Indiranagar", "phone": "104"}
+            },
+            "delhi": {
+                "hospital": {"name": "AIIMS", "phone": "011-26588500"},
+                "clinic": {"name": "Mohalla Clinic, Hauz Khas", "phone": "104"}
+            }
+        }
+        
+        # We can implement fuzzy matching or fallback here
+        for known_dist, facilities in MOCK_FACILITIES.items():
+            if known_dist in district_lower:
+                if care_level_lower in facilities:
+                    fac = facilities[care_level_lower]
+                    return json.dumps({
+                        "status": "ok",
+                        "facility_name": fac["name"],
+                        "phone": fac["phone"]
+                    })
+                    
+        return json.dumps({
+            "status": "not_found",
+            "spoken_fallback": "I'm sorry, I couldn't find a specific facility in my directory for that area. Please check with your local health worker or search online for the nearest one."
+        })
 
 
 server = AgentServer()
@@ -390,51 +543,21 @@ async def my_agent(ctx: JobContext):
     participant = await ctx.wait_for_participant()
     user_id = participant.identity
     logger.info(f"[Memory] Linked participant identity: {user_id}")
-    logger.info("[Memory] Looking up caller")
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT name, facts FROM callers WHERE user_id = ?", (user_id,))
-    row = cursor.fetchone()
-    conn.close()
-
+    logger.info("[Identity] Current client user_id: %s", user_id)
+    
     dynamic_prompt = SYSTEM_PROMPT
-    if row and row[0]:
-        caller_name = row[0]
-        caller_facts = row[1] if row[1] else "None"
-        logger.info("[Memory] Caller found: true")
-        logger.info("[Memory] Conversation state: RETURNING_CALLER")
-        logger.info(f"[Memory] Returning caller name loaded: {caller_name}")
-        
-        greeting_instructions = f"""
-RETURNING CALLER
-The caller has been identified as a returning caller.
-Their stored name is: {caller_name}
-Their stored facts from previous conversations are: {caller_facts}
-
-Use their stored name naturally ({caller_name}).
-Welcome them back and gently acknowledge/continue from the stored facts if appropriate. For example: "Namaste Ramesh, last time we spoke about your fever. How are you feeling now?"
-Respond in the language the caller is currently using.
-Do not assume the stored language preference is the current language.
-If the caller is speaking English, greet them in English (e.g. "Welcome back, {caller_name}!").
-If the caller is speaking Hindi, greet them in Hindi using Devanagari (e.g. "नमस्ते {caller_name}! वापस स्वागत है।").
-If the caller is speaking another supported language, use that language's native script.
-Do NOT ask for their name again.
-"""
-        dynamic_prompt = greeting_instructions + dynamic_prompt
-    else:
-        logger.info("[Memory] Caller found: false")
-        logger.info("[Memory] Conversation state: NEW_CALLER")
-        logger.info("[Memory] Initial greeting: asking for name")
-        
-        greeting_instructions = """
-NEW CALLER
-You are speaking to a new caller.
-Your very first words MUST be to ask for their name in a neutral/default greeting appropriate for the current conversation configuration.
+    
+    greeting_instructions = """
+INITIAL GREETING
+You must ALWAYS start the conversation by asking for the caller's name.
 Example (if English): "Hello, I am Saathi. May I know your name?"
 Example (if Hindi): "नमस्ते, मैं साथी हूँ। क्या मैं आपका नाम जान सकती हूँ?"
+
+Do NOT assume you know who they are, even if you spoke to them before.
+Once the caller provides their name, you MUST silently call the `lookup_caller(name)` tool to retrieve their profile.
+Only AFTER the `lookup_caller` tool returns their profile data should you greet them appropriately (e.g. "Welcome back, Ramesh!" or "Nice to meet you, Seshu!").
 """
-        dynamic_prompt = greeting_instructions + dynamic_prompt
+    dynamic_prompt = greeting_instructions + dynamic_prompt
 
     my_assistant = Assistant(instructions=dynamic_prompt)
 

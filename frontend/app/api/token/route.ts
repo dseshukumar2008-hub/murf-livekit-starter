@@ -18,7 +18,15 @@ const AGENT_NAME = process.env.AGENT_NAME;
 // don't cache the results
 export const revalidate = 0;
 
+export async function GET(req: Request) {
+  return handleRequest(req);
+}
+
 export async function POST(req: Request) {
+  return handleRequest(req);
+}
+
+async function handleRequest(req: Request) {
   try {
     if (LIVEKIT_URL === undefined) {
       throw new Error('LIVEKIT_URL is not defined');

@@ -45,7 +45,7 @@ export function App({ appConfig }: AppProps) {
 
   const session = useSession(
     tokenSource,
-    appConfig.agentName ? { agentName: appConfig.agentName } : undefined
+    appConfig.agentName ? { agentName: appConfig.agentName, agentConnectTimeoutMilliseconds: 60000 } : undefined
   );
 
   return (
