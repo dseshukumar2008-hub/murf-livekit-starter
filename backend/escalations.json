@@ -1,0 +1,35 @@
+[
+  {
+    "caller_identifier": "Nani",
+    "what_happened": "Caller reported severe chest pain and gave permission to escalate to the care team.",
+    "what_agent_checked": "Caller reported severe chest pain.",
+    "urgency": "emergency",
+    "caller_language": "English",
+    "preferred_followup": "phone",
+    "ref_id": "ESC-1DC50B66",
+    "status": "pending",
+    "timestamp": "2026-08-12T07:00:55.612631Z"
+  },
+  {
+    "caller_identifier": "Ravi",
+    "what_happened": "Caller reported severe chest pain and dizziness, gave consent to escalate to the care team.",
+    "what_agent_checked": "Checked symptoms of severe chest pain and dizziness.",
+    "urgency": "emergency",
+    "caller_language": "English",
+    "preferred_followup": "Phone call",
+    "ref_id": "ESC-EE60A6C3",
+    "status": "pending",
+    "timestamp": "2026-08-12T13:43:15.090028Z"
+  },
+  {
+    "caller_identifier": "Rahul",
+    "what_happened": "Caller reported severe chest pain and dizziness.",
+    "what_agent_checked": "Checked for chest pain and dizziness",
+    "urgency": "emergency",
+    "caller_language": "English",
+    "preferred_followup": "phone",
+    "ref_id": "ESC-440920C8",
+    "status": "pending",
+    "timestamp": "2026-08-12T14:23:54.259053Z"
+  }
+]

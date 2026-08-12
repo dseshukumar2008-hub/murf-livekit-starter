@@ -21,6 +21,7 @@ from livekit.agents import (
 )
 from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from prompts.escalation_prompt import ESCALATION_INSTRUCTIONS
 
 logger = logging.getLogger("agent")
 
@@ -128,12 +129,13 @@ NEVER read out raw JSON, field names, or the exact word "triage_level" out loud.
 Speak the `recommended_action` naturally, in your own warm tone, maintaining the rule that you do not diagnose, but rather advise on what they should do next based on the triage level.
 
 FACILITY LOOKUP — CHAINED AFTER TRIAGE
-If `classify_triage_level` returns a triage_level of "moderate" or "urgent", you must find the caller a real place to go before ending your answer:
+If `classify_triage_level` returns a triage_level of "moderate", you must find the caller a real place to go before ending your answer:
 1. If you do not already know the caller's district or area, ask for it first ("Which area or district are you in?").
+IMPORTANT: For "urgent" triage or red-flag symptoms, DO NOT ask for their district or perform a facility lookup right away. The ESCALATION WORKFLOW (described below) takes absolute priority and must happen first without delay.
 2. Once you have it, silently call `find_nearest_facility` with that district and the appropriate care_level ("clinic" for moderate, "hospital" for urgent).
 3. If the tool returns status "ok", speak the facility's name and phone number naturally as part of your recommendation, and mention that this is from your local facility directory.
 4. If the tool returns status "unavailable" or "not_found", speak the `spoken_fallback` text from the tool result exactly as your guidance. Do NOT invent a facility name, address, or phone number under any circumstances — if the tool can't find one, say so honestly.
-5. Do NOT call `find_nearest_facility` when triage_level is "mild" or "needs_more_info" — self-care advice does not need a facility referral.
+5. Do NOT call `find_nearest_facility` when triage_level is "mild", "needs_more_info", or "urgent" — self-care advice does not need a facility referral, and urgent care strictly requires the Escalation Workflow first.
 """
 
 
@@ -430,6 +432,29 @@ class Assistant(Agent):
             "spoken_fallback": "I'm sorry, I couldn't find a specific facility in my directory for that area. Please call your district health helpline or 108 emergency services for the nearest one."
         })
 
+    @function_tool
+    async def create_escalation(
+        self, 
+        context: RunContext, 
+        caller_identifier: str,
+        what_happened: str,
+        what_agent_checked: str,
+        urgency: str,
+        caller_language: str,
+        preferred_followup: str
+    ):
+        """Creates a human escalation ticket. Use this ONLY after asking the user for explicit permission to share their details."""
+        from tools.escalation import create_escalation_logic
+        summary = {
+            "caller_identifier": caller_identifier,
+            "what_happened": what_happened,
+            "what_agent_checked": what_agent_checked,
+            "urgency": urgency,
+            "caller_language": caller_language,
+            "preferred_followup": preferred_followup
+        }
+        return create_escalation_logic(summary)
+
 
 server = AgentServer()
 
@@ -539,7 +564,7 @@ async def my_agent(ctx: JobContext):
     logger.info(f"[Memory] Linked participant identity: {user_id}")
     logger.info("[Identity] Current client user_id: %s", user_id)
     
-    dynamic_prompt = SYSTEM_PROMPT
+    dynamic_prompt = SYSTEM_PROMPT + "\n\n" + ESCALATION_INSTRUCTIONS
     
     greeting_instructions = """
 INITIAL GREETING
