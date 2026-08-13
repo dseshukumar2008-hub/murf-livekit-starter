@@ -3,6 +3,8 @@ import sqlite3
 import json
 import os
 from datetime import datetime
+import asyncio
+import aiohttp.web
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -40,6 +42,14 @@ def init_db():
             language_preference TEXT,
             facts TEXT,
             last_interaction TIMESTAMP
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS call_analytics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            call_id TEXT UNIQUE,
+            outcome TEXT,
+            created_at TIMESTAMP
         )
     """)
     conn.commit()
@@ -136,6 +146,9 @@ IMPORTANT: For "urgent" triage or red-flag symptoms, DO NOT ask for their distri
 3. If the tool returns status "ok", speak the facility's name and phone number naturally as part of your recommendation, and mention that this is from your local facility directory.
 4. If the tool returns status "unavailable" or "not_found", speak the `spoken_fallback` text from the tool result exactly as your guidance. Do NOT invent a facility name, address, or phone number under any circumstances — if the tool can't find one, say so honestly.
 5. Do NOT call `find_nearest_facility` when triage_level is "mild", "needs_more_info", or "urgent" — self-care advice does not need a facility referral, and urgent care strictly requires the Escalation Workflow first.
+
+SUCCESS MARKING
+When you have successfully completed the user's request and they have received the information or assistance they asked for, call the `mark_request_resolved` tool before ending the interaction. Do not call this tool merely because you answered something; use it when the user's actual request has been satisfactorily handled.
 """
 
 
@@ -146,6 +159,13 @@ class Assistant(Agent):
         self.pending_memory = None
         self.current_profile_id = None
         self.current_profile_name = None
+        self.call_successful = False
+
+    @function_tool
+    async def mark_request_resolved(self, context: RunContext):
+        """Call this tool when you have successfully completed the user's request and they have received the information or assistance they asked for, BEFORE ending the interaction. Do not call this tool merely because you answered something; use it when the user's actual request has been satisfactorily handled."""
+        self.call_successful = True
+        return "Marked as resolved successfully."
 
     @function_tool
     async def register_consent_response(self, context: RunContext, approved: bool, ambiguous: bool = False):
@@ -453,7 +473,10 @@ class Assistant(Agent):
             "caller_language": caller_language,
             "preferred_followup": preferred_followup
         }
-        return create_escalation_logic(summary)
+        result = create_escalation_logic(summary)
+        if "Success!" in result:
+            self.call_successful = True
+        return result
 
 
 server = AgentServer()
@@ -579,6 +602,20 @@ Only AFTER the `lookup_caller` tool returns their profile data should you greet 
     dynamic_prompt = greeting_instructions + dynamic_prompt
 
     my_assistant = Assistant(instructions=dynamic_prompt)
+
+    @ctx.room.on("disconnected")
+    def on_disconnected(*args, **kwargs):
+        outcome = "successful" if my_assistant.call_successful else "failed"
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        try:
+            cursor.execute("INSERT INTO call_analytics (call_id, outcome, created_at) VALUES (?, ?, ?)", (ctx.room.name, outcome, now))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            pass
+        finally:
+            conn.close()
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(

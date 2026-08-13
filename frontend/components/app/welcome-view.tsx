@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   HeartPulse, 
   Globe, 
   Info, 
@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Shield
 } from 'lucide-react';
+import { AnalyticsDashboard } from './analytics-dashboard';
 
 interface WelcomeViewProps {
   startButtonText: string;
@@ -70,7 +71,10 @@ export const WelcomeView = ({
       </header>
 
       {/* Main Content Container */}
-      <main className="flex-1 flex flex-col items-center px-6 lg:px-12 w-full max-w-[1400px] mx-auto pb-12 z-10 relative">
+      <main className="flex-1 flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] gap-8 xl:gap-10 px-4 md:px-8 xl:px-12 w-full max-w-[1400px] mx-auto pb-12 z-10 relative items-start overflow-hidden xl:overflow-visible box-border">
+        
+        {/* Left Column (Main Saathi Content) */}
+        <div className="w-full min-w-0 flex flex-col items-center xl:items-start box-border">
         
         {/* Landscape Background Illusion */}
         <div className="absolute top-0 right-0 w-[50%] h-[600px] pointer-events-none -z-10 overflow-hidden opacity-50">
@@ -117,27 +121,26 @@ export const WelcomeView = ({
             <div className="relative flex flex-col items-center">
               {/* Circular Visual */}
               <div className="w-56 h-56 md:w-[280px] md:h-[280px] relative flex items-center justify-center mb-8">
-                {/* Dotted border ring */}
-                <div className="absolute inset-0 rounded-full border-2 border-teal-200/60 border-dashed animate-[spin_120s_linear_infinite]"></div>
+                {/* Dotted border ring - Made thinner and more subtle */}
+                <div className="absolute inset-0 rounded-full border border-teal-200/40 border-dashed animate-[spin_120s_linear_infinite]"></div>
                 
-                {/* Soft background glow */}
-                <div className="absolute inset-4 rounded-full bg-teal-50/50 backdrop-blur-sm"></div>
+                {/* Soft background glow - Reduced intensity */}
+                <div className="absolute inset-8 rounded-full bg-teal-50/20 backdrop-blur-sm"></div>
 
-                {/* Inner white circle */}
-                <div className="absolute inset-6 rounded-full bg-white shadow-2xl shadow-teal-900/10 flex items-center justify-center border border-teal-50">
-                  {/* The Heart Logo inside */}
-                  <div className="relative flex items-center justify-center w-28 h-28">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-emerald-600 drop-shadow-md">
+                {/* Inner white circle - Increased inset to give more space from the outer ring */}
+                <div className="absolute inset-12 rounded-full bg-white shadow-xl shadow-teal-900/5 flex items-center justify-center border border-teal-50/50">
+                  {/* The Heart Logo inside - Reduced size for more breathing room */}
+                  <div className="relative flex items-center justify-center w-16 h-16">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-emerald-600 drop-shadow-sm">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
                       <path d="M3 12h4l2.5-4 4 10 3-6h4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
                 </div>
 
-                {/* Little decorative sparkles */}
-                <div className="absolute top-8 right-12 w-2 h-2 bg-teal-300 rounded-full blur-[1px]"></div>
-                <div className="absolute top-16 right-6 w-3 h-3 bg-emerald-200 rounded-full blur-[1px]"></div>
-                <div className="absolute bottom-12 left-10 w-2 h-2 bg-mint-300 rounded-full blur-[1px]" style={{backgroundColor: '#a7f3d0'}}></div>
+                {/* Little decorative sparkles - Reduced number, smaller size, pushed outward */}
+                <div className="absolute top-4 right-10 w-1.5 h-1.5 bg-teal-200 rounded-full blur-[0.5px]"></div>
+                <div className="absolute bottom-6 left-12 w-2 h-2 bg-emerald-100 rounded-full blur-[0.5px]"></div>
               </div>
 
               <h3 className="text-[28px] font-bold text-slate-800 mb-2 tracking-tight">
@@ -163,7 +166,7 @@ export const WelcomeView = ({
         </div>
 
         {/* Benefits Row */}
-        <div className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-4 mb-10 relative z-20">
+        <div className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-wrap lg:flex-nowrap items-start lg:items-center justify-between gap-6 lg:gap-4 mb-10 relative z-20 overflow-hidden box-border">
           <div className="flex items-start gap-4 flex-1">
             <div className="bg-[#eefcf5] p-3 rounded-full shrink-0 text-emerald-500"><ShieldCheck size={26} strokeWidth={2.2}/></div>
             <div>
@@ -202,7 +205,7 @@ export const WelcomeView = ({
 
         {/* How Saathi Can Help Section */}
         <div className="w-full bg-[#f4f7fc] border border-blue-50 rounded-3xl py-8 px-6 lg:px-8 flex flex-col gap-8 mb-8 relative z-20 shadow-sm">
-          <div className="flex flex-col xl:flex-row items-center justify-between gap-8 xl:gap-4 w-full">
+          <div className="flex flex-col xl:flex-row items-center justify-between gap-6 xl:gap-4 w-full">
             <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
               <div className="text-indigo-800 bg-white w-14 h-14 rounded-full shadow-sm shrink-0 border border-indigo-50 flex items-center justify-center">
                 <HeartHandshake size={28} strokeWidth={2.2} />
@@ -210,7 +213,7 @@ export const WelcomeView = ({
               <h3 className="text-[22px] font-bold text-slate-800 tracking-tight text-center sm:text-left">How Saathi Can Help</h3>
             </div>
             
-            <div className="flex flex-row flex-wrap xl:flex-nowrap justify-center xl:justify-end gap-3 w-full">
+            <div className="flex flex-row flex-wrap justify-center xl:justify-end gap-3 w-full">
               <div className="bg-white px-4 lg:px-5 py-3 rounded-full flex items-center gap-2.5 text-[13.5px] lg:text-[14px] font-semibold text-slate-700 shadow-sm whitespace-nowrap"><Check size={18} strokeWidth={3} className="text-emerald-600 shrink-0"/> Understand your symptoms</div>
               <div className="bg-white px-4 lg:px-5 py-3 rounded-full flex items-center gap-2.5 text-[13.5px] lg:text-[14px] font-semibold text-slate-700 shadow-sm whitespace-nowrap"><Check size={18} strokeWidth={3} className="text-emerald-600 shrink-0"/> Learn about healthy habits</div>
               <div className="bg-white px-4 lg:px-5 py-3 rounded-full flex items-center gap-2.5 text-[13.5px] lg:text-[14px] font-semibold text-slate-700 shadow-sm whitespace-nowrap"><Check size={18} strokeWidth={3} className="text-emerald-600 shrink-0"/> Get general wellness guidance</div>
@@ -223,6 +226,26 @@ export const WelcomeView = ({
             <p className="text-[13.5px] font-medium text-slate-600">For emergencies, please contact your <span className="text-[#e25d5d] font-semibold">local emergency services</span>.</p>
           </div>
         </div>
+        </div>
+
+        {/* Right Column: Analytics Sidebar */}
+        <aside className="w-full min-w-0 xl:sticky xl:top-8 flex flex-col gap-6 box-border">
+          <AnalyticsDashboard triggerRefresh={hasEnded} />
+          
+          {/* Privacy Card */}
+          <div className="bg-[#f0faf5] border border-emerald-100/60 p-5 rounded-3xl flex items-start gap-4 shadow-sm w-full">
+            <div className="text-emerald-600 shrink-0 mt-0.5">
+              <ShieldCheck size={24} strokeWidth={2.2} />
+            </div>
+            <div>
+              <h4 className="font-bold text-emerald-900 text-sm mb-1 leading-snug">We respect your privacy</h4>
+              <p className="text-[12px] text-slate-600 font-medium leading-snug">
+                No personal or sensitive information<br/>is displayed here.
+              </p>
+            </div>
+          </div>
+        </aside>
+
       </main>
 
       {/* Footer */}

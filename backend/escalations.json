@@ -31,5 +31,27 @@
     "ref_id": "ESC-440920C8",
     "status": "pending",
     "timestamp": "2026-08-12T14:23:54.259053Z"
+  },
+  {
+    "caller_identifier": "Rohit",
+    "what_happened": "Caller reported severe chest pain during physical activity and consented to care team escalation.",
+    "what_agent_checked": "Checked reported symptoms of severe chest pain while cycling.",
+    "urgency": "emergency",
+    "caller_language": "English",
+    "preferred_followup": "phone",
+    "ref_id": "ESC-6727AF4C",
+    "status": "pending",
+    "timestamp": "2026-08-13T10:51:04.605190Z"
+  },
+  {
+    "caller_identifier": "Charan",
+    "what_happened": "Caller reported severe chest pain. Advised to seek immediate emergency medical care and requested escalation.",
+    "what_agent_checked": "Evaluated red-flag symptom of severe chest pain and obtained user consent for escalation.",
+    "urgency": "emergency",
+    "caller_language": "English",
+    "preferred_followup": "phone",
+    "ref_id": "ESC-4AE53E81",
+    "status": "pending",
+    "timestamp": "2026-08-13T10:55:28.547324Z"
   }
 ]
