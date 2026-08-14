@@ -289,15 +289,15 @@ export function AgentControlBar({
       aria-label="Voice assistant controls"
       className={cn(
         'bg-background border-input/50 dark:border-muted flex flex-col border p-3 drop-shadow-md/3',
-        variant === 'livekit' ? 'rounded-[31px]' : 'rounded-lg',
+        variant === 'livekit' ? 'rounded-full px-4 py-2 bg-white shadow-lg flex-row items-center justify-center border-slate-100 w-max' : 'rounded-lg',
         className
       )}
       {...props}
     >
       {/* Chat input removed as per requirements */}
 
-      <div className="flex gap-1">
-        <div className="flex grow gap-1">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {/* Toggle Microphone */}
           {visibleControls.microphone && (
             <AgentTrackControl
@@ -382,11 +382,11 @@ export function AgentControlBar({
             disabled={!isConnected}
             className={cn(
               variant === 'livekit' &&
-                'bg-destructive/10 dark:bg-destructive/10 text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/20 focus:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/4 rounded-full font-mono text-xs font-bold tracking-wider'
+                'bg-red-500 text-white hover:bg-red-600 focus:bg-red-600 rounded-full font-sans text-[14px] font-semibold px-6 py-2 shadow-sm ml-2 flex items-center gap-2 border-none shrink-0'
             )}
           >
-            <span className="hidden md:inline">END CALL</span>
-            <span className="inline md:hidden">END</span>
+            <span className="hidden md:inline">End Call</span>
+            <span className="inline md:hidden">End</span>
           </AgentDisconnectButton>
         )}
       </div>

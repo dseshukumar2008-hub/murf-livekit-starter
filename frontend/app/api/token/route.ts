@@ -55,9 +55,10 @@ async function handleRequest(req: Request) {
     // Generate participant token
     const url = new URL(req.url);
     const userId = url.searchParams.get('user_id');
+    const sessionId = url.searchParams.get('session_id');
     const participantName = 'user';
     const participantIdentity = userId || `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
-    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
+    const roomName = sessionId ? `voice_assistant_room_${sessionId}` : `voice_assistant_room_${participantIdentity}`;
 
     const participantToken = await createParticipantToken(
       { identity: participantIdentity, name: participantName },

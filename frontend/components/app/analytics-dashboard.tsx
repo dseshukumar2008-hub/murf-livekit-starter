@@ -2,12 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart2, CheckCircle2, XCircle, Phone, RefreshCw, ArrowLeft, ArrowRight } from 'lucide-react';
+import { BarChart2, CheckCircle2, XCircle, Phone, RefreshCw, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
+
+interface RecentCall {
+  outcome: string;
+  createdAt: string;
+  description: string;
+}
 
 interface AnalyticsData {
   totalCalls: number;
   successfulCalls: number;
   failedCalls: number;
+  recentCalls?: RecentCall[];
+}
+
+function timeAgo(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  return `${Math.floor(hours / 24)} days ago`;
 }
 
 interface AnalyticsDashboardProps {
@@ -77,13 +96,13 @@ export function AnalyticsDashboard({ triggerRefresh }: AnalyticsDashboardProps) 
 
           {/* Header */}
           <div className="mb-12 flex flex-col gap-3">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight">Call Performance Analytics</h1>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight">Call Analytics Dashboard</h1>
             <p className="text-lg md:text-xl text-slate-500 font-medium">Track how effectively your voice agent calls are performing.</p>
             
             <div className="flex flex-wrap items-center gap-4 mt-6">
               <div className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 px-4 py-2.5 rounded-full text-sm font-bold flex items-center gap-2.5 shadow-sm">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Live Call Monitoring Active
+                Analytics Monitoring Active
               </div>
               <div className="flex items-center gap-2 text-slate-500 text-sm font-medium bg-white px-4 py-2.5 rounded-full border border-slate-100 shadow-sm">
                 <RefreshCw size={16} className={loading ? "animate-spin text-emerald-500" : "text-emerald-500"} />
@@ -105,7 +124,7 @@ export function AnalyticsDashboard({ triggerRefresh }: AnalyticsDashboardProps) 
               <p className="text-5xl font-extrabold text-slate-800 mb-4">
                 {data ? data.totalCalls : '-'}
               </p>
-              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">Total voice sessions started</p>
+              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">Total voice sessions completed</p>
             </div>
 
             {/* Successful Calls */}
@@ -118,7 +137,7 @@ export function AnalyticsDashboard({ triggerRefresh }: AnalyticsDashboardProps) 
               <p className="text-5xl font-extrabold text-slate-800 mb-4">
                 {data ? data.successfulCalls : '-'}
               </p>
-              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">Exercise completed by learner</p>
+              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">User request resolved or human assistance successfully escalated</p>
             </div>
 
             {/* Failed Calls */}
@@ -131,7 +150,7 @@ export function AnalyticsDashboard({ triggerRefresh }: AnalyticsDashboardProps) 
               <p className="text-5xl font-extrabold text-slate-800 mb-4">
                 {data ? data.failedCalls : '-'}
               </p>
-              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">Exercise not completed before exit</p>
+              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">User request not resolved before the call ended</p>
             </div>
 
             {/* Success Rate */}
@@ -155,9 +174,70 @@ export function AnalyticsDashboard({ triggerRefresh }: AnalyticsDashboardProps) 
                 />
               </div>
 
-              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">Completion percentage</p>
+              <p className="text-[14px] text-slate-500 font-medium mt-auto border-t border-slate-50 pt-4">Percentage of calls meeting the success condition</p>
             </div>
 
+          </div>
+
+          {/* Recent Call Outcomes */}
+          <div className="mt-8 bg-white rounded-[32px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-slate-100 p-8 lg:p-10 relative">
+            {/* Header Row */}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-10">
+              <div>
+                <h2 className="text-[28px] lg:text-[32px] font-bold text-[#142A44] mb-1">Recent Call Outcomes</h2>
+                <p className="text-[18px] text-[#7185A0] font-medium">Latest voice agent call results</p>
+              </div>
+              <button className="bg-[#E8F8F2] text-[#008F6B] border border-[#00A878]/20 px-4 py-2 rounded-xl text-[15px] font-semibold flex items-center gap-2 hover:bg-[#F1FBF7] transition-colors shrink-0">
+                View all <ArrowRight size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Timeline List */}
+            {data?.recentCalls && data.recentCalls.length > 0 ? (
+              <div className="flex flex-col relative w-full">
+                {data.recentCalls.map((call, i) => {
+                  const isLast = i === data.recentCalls!.length - 1;
+                  const isSuccess = call.outcome === 'successful';
+                  
+                  return (
+                    <div key={i} className="relative flex items-start gap-6 pt-4 pb-4">
+                      {/* Timeline Line */}
+                      {!isLast && (
+                        <div className="absolute left-[13px] top-[46px] bottom-[-16px] w-[2px] bg-[#E8F8F2] -z-0"></div>
+                      )}
+                      
+                      {/* Icon */}
+                      <div className={`relative z-10 shrink-0 bg-white pt-1 ${isSuccess ? 'text-[#008F6B]' : 'text-rose-500'}`}>
+                        {isSuccess ? <CheckCircle2 size={28} strokeWidth={2} /> : <XCircle size={28} strokeWidth={2} />}
+                      </div>
+                      
+                      {/* Content Container */}
+                      <div className={`flex-1 flex flex-col md:flex-row md:items-start justify-between gap-2 pb-8 ${!isLast ? 'border-b border-slate-100/60' : ''}`}>
+                        <div className="flex flex-col">
+                          <span className={`text-[22px] font-bold mb-1 ${isSuccess ? 'text-[#008F6B]' : 'text-rose-500'}`}>
+                            {isSuccess ? 'Successful' : 'Failed'}
+                          </span>
+                          <span className="text-[18px] text-[#142A44] font-medium leading-snug">
+                            {call.description}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-[17px] text-[#7185A0] font-medium md:mt-1 shrink-0">
+                          <Clock size={18} strokeWidth={2} className="mt-[1px]" />
+                          {timeAgo(call.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-16 flex flex-col items-center justify-center">
+                <Phone size={48} className="text-slate-200 mb-4" strokeWidth={1.5} />
+                <p className="text-[20px] font-bold text-slate-800 mb-2">No calls yet</p>
+                <p className="text-[16px] text-[#7185A0] font-medium">Your recent call outcomes will appear here after your first call.</p>
+              </div>
+            )}
           </div>
 
           {error && (

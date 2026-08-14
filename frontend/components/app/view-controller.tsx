@@ -31,9 +31,10 @@ const VIEW_MOTION_PROPS = {
 
 interface ViewControllerProps {
   appConfig: AppConfig;
+  onCallEnded?: () => void;
 }
 
-export function ViewController({ appConfig }: ViewControllerProps) {
+export function ViewController({ appConfig, onCallEnded }: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
   const { resolvedTheme } = useTheme();
   const [callEnded, setCallEnded] = useState(false);
@@ -46,8 +47,11 @@ export function ViewController({ appConfig }: ViewControllerProps) {
     } else if (wasConnected.current && !isConnected) {
       setCallEnded(true);
       wasConnected.current = false;
+      if (onCallEnded) {
+        onCallEnded();
+      }
     }
-  }, [isConnected]);
+  }, [isConnected, onCallEnded]);
 
   return (
     <AnimatePresence mode="wait">

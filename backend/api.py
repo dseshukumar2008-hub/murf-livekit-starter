@@ -14,17 +14,32 @@ async def handle_analytics(request):
         stats = {"successful": 0, "failed": 0}
         for row in rows:
             stats[row[0]] = row[1]
+            
+        cursor.execute("SELECT outcome, created_at FROM call_analytics ORDER BY created_at DESC LIMIT 5")
+        recent_rows = cursor.fetchall()
+        recent_calls = []
+        for row in recent_rows:
+            outcome = row[0]
+            desc = "User request resolved or human assistance successfully escalated" if outcome == "successful" else "User request not resolved before the call ended"
+            recent_calls.append({
+                "outcome": outcome,
+                "createdAt": row[1],
+                "description": desc
+            })
+            
         return aiohttp.web.json_response({
             "totalCalls": stats["successful"] + stats["failed"],
             "successfulCalls": stats["successful"],
-            "failedCalls": stats["failed"]
+            "failedCalls": stats["failed"],
+            "recentCalls": recent_calls
         }, headers={"Access-Control-Allow-Origin": "*"})
     except sqlite3.OperationalError:
         # Table might not exist yet
         return aiohttp.web.json_response({
             "totalCalls": 0,
             "successfulCalls": 0,
-            "failedCalls": 0
+            "failedCalls": 0,
+            "recentCalls": []
         }, headers={"Access-Control-Allow-Origin": "*"})
     finally:
         conn.close()

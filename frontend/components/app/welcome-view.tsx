@@ -42,7 +42,7 @@ export const WelcomeView = ({
   };
 
   return (
-    <div ref={ref} className="min-h-screen bg-[#f8fdfb] flex flex-col font-sans text-slate-800 selection:bg-teal-100 selection:text-teal-900">
+    <div ref={ref} className="min-h-screen bg-[#F6FFFC] flex flex-col font-sans text-slate-800 selection:bg-teal-100 selection:text-teal-900">
       {/* Header */}
       <header className="flex justify-between items-center p-6 lg:px-12 w-full z-20">
         <div className="flex items-center gap-3">
@@ -76,11 +76,33 @@ export const WelcomeView = ({
         {/* Left Column (Main Saathi Content) */}
         <div className="w-full min-w-0 flex flex-col items-center xl:items-start box-border">
         
-        {/* Landscape Background Illusion */}
-        <div className="absolute top-0 right-0 w-[50%] h-[600px] pointer-events-none -z-10 overflow-hidden opacity-50">
-          <div className="absolute top-40 -right-20 w-[600px] h-[600px] bg-gradient-to-t from-emerald-100/60 to-transparent rounded-[100px] rotate-45 blur-2xl"></div>
-          <div className="absolute top-20 right-40 w-[400px] h-[400px] bg-gradient-to-t from-teal-50/80 to-transparent rounded-full blur-3xl"></div>
-          <div className="absolute top-60 right-60 w-32 h-32 bg-orange-100/50 rounded-full blur-2xl"></div>
+        {/* Modern Premium AI Health Background Treatment */}
+        <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden flex justify-end">
+          {/* Very soft white to pale mint gradient across the hero */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-[#F6FFFC] to-[#eaf8f4] opacity-70"></div>
+          
+          {/* Large subtle radial mint/teal glow behind the heart (top-right focused) */}
+          <div className="absolute top-[-10%] right-[5%] w-[800px] h-[800px] bg-[radial-gradient(circle_at_center,#D9FFF2_0%,transparent_60%)] opacity-70 blur-3xl mix-blend-multiply"></div>
+          
+          {/* Soft blurred light patch slightly below the heart */}
+          <div className="absolute top-[30%] right-[15%] w-[400px] h-[400px] bg-teal-100/30 blur-[100px] rounded-full"></div>
+
+          {/* Elegant medical ECG/audio-wave flowing lines extending from the heart area */}
+          <div className="absolute top-[40%] right-[30%] w-[120%] h-[2px] bg-gradient-to-r from-transparent via-teal-200/20 to-transparent -rotate-[15deg]"></div>
+          <div className="absolute top-[45%] right-[25%] w-[100%] h-[1px] bg-gradient-to-r from-transparent via-emerald-200/20 to-transparent -rotate-[10deg]"></div>
+          <div className="absolute top-[35%] right-[35%] w-[100%] h-[1px] bg-gradient-to-r from-transparent via-cyan-200/20 to-transparent -rotate-[20deg]"></div>
+
+          {/* Subtle thin geometric curves/arcs */}
+          <div className="absolute top-[10%] right-[-10%] w-[700px] h-[700px] border-[1px] border-teal-100/30 rounded-full scale-110 opacity-70"></div>
+          <div className="absolute top-[0%] right-[-5%] w-[850px] h-[850px] border-[0.5px] border-emerald-100/20 rounded-full scale-125 opacity-60"></div>
+          <div className="absolute top-[20%] right-[-15%] w-[500px] h-[500px] border-[1px] border-cyan-100/20 rounded-full scale-105 opacity-50"></div>
+
+          {/* Tiny low-opacity mint/cyan particles/dots around the hero area */}
+          <div className="absolute top-24 right-48 w-1 h-1 rounded-full bg-teal-400 opacity-30 blur-[0.5px]"></div>
+          <div className="absolute top-40 right-20 w-1.5 h-1.5 rounded-full bg-emerald-400 opacity-20 blur-[0.5px]"></div>
+          <div className="absolute top-[40%] right-[10%] w-1 h-1 rounded-full bg-cyan-400 opacity-30 blur-[0.5px]"></div>
+          <div className="absolute top-[60%] right-[40%] w-1.5 h-1.5 rounded-full bg-teal-300 opacity-20 blur-[0.5px]"></div>
+          <div className="absolute top-[15%] right-[35%] w-1 h-1 rounded-full bg-emerald-300 opacity-40 blur-[0.5px]"></div>
         </div>
 
         {/* Hero Section */}
@@ -119,28 +141,48 @@ export const WelcomeView = ({
           <div className="w-full lg:w-[55%] relative flex flex-col items-center pt-8">
             
             <div className="relative flex flex-col items-center">
-              {/* Circular Visual */}
+              {/* Circular Visual - Modern AI Health Interface */}
               <div className="w-56 h-56 md:w-[280px] md:h-[280px] relative flex items-center justify-center mb-8">
-                {/* Dotted border ring - Made thinner and more subtle */}
-                <div className="absolute inset-0 rounded-full border border-teal-200/40 border-dashed animate-[spin_120s_linear_infinite]"></div>
+                {/* Soft outer glow */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#00A878] via-[#00BFA6] to-[#20CFE8] opacity-15 blur-2xl animate-pulse"></div>
                 
-                {/* Soft background glow - Reduced intensity */}
-                <div className="absolute inset-8 rounded-full bg-teal-50/20 backdrop-blur-sm"></div>
+                {/* Concentric rings */}
+                <div className="absolute inset-2 rounded-full border border-teal-300/30"></div>
+                <div className="absolute inset-6 rounded-full border border-[#00BFA6]/40 shadow-[0_0_15px_rgba(0,191,166,0.15)] animate-[spin_60s_linear_infinite]">
+                  {/* Glowing floating dot 1 */}
+                  <div className="absolute -top-1.5 left-1/2 w-3 h-3 bg-[#20CFE8] rounded-full shadow-[0_0_10px_#20CFE8]"></div>
+                </div>
+                <div className="absolute inset-10 rounded-full border border-dashed border-emerald-400/40 animate-[spin_90s_linear_infinite_reverse]">
+                  {/* Glowing floating dot 2 */}
+                  <div className="absolute bottom-4 right-4 w-2 h-2 bg-[#00A878] rounded-full shadow-[0_0_8px_#00A878]"></div>
+                  {/* Glowing floating dot 3 */}
+                  <div className="absolute top-1/2 -left-1 w-2.5 h-2.5 bg-[#00BFA6] rounded-full shadow-[0_0_8px_#00BFA6]"></div>
+                </div>
 
-                {/* Inner white circle - Increased inset to give more space from the outer ring */}
-                <div className="absolute inset-12 rounded-full bg-white shadow-xl shadow-teal-900/5 flex items-center justify-center border border-teal-50/50">
-                  {/* The Heart Logo inside - Reduced size for more breathing room */}
-                  <div className="relative flex items-center justify-center w-16 h-16">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-emerald-600 drop-shadow-sm">
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
-                      <path d="M3 12h4l2.5-4 4 10 3-6h4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Inner white circle */}
+                <div className="absolute inset-14 rounded-full bg-white shadow-2xl shadow-teal-900/10 flex items-center justify-center z-10">
+                  {/* Gentle green/teal glow around the heart */}
+                  <div className="absolute inset-4 rounded-full bg-[#00BFA6] opacity-15 blur-md animate-[pulse_4s_ease-in-out_infinite]"></div>
+                  
+                  {/* Vibrant Heart with Gradient & 3D Shadow */}
+                  <div className="relative flex items-center justify-center w-16 h-16 z-20">
+                    <svg viewBox="0 0 24 24" fill="url(#heart-gradient)" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-[0_6px_8px_rgba(0,168,120,0.35)]">
+                      <defs>
+                        <linearGradient id="heart-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#00A878" />
+                          <stop offset="50%" stopColor="#00BFA6" />
+                          <stop offset="100%" stopColor="#20CFE8" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      <path d="M4 12h3l2.5-4 3 10 2.5-6h5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" className="drop-shadow-[0_0_3px_rgba(255,255,255,0.7)]"/>
                     </svg>
                   </div>
                 </div>
-
-                {/* Little decorative sparkles - Reduced number, smaller size, pushed outward */}
-                <div className="absolute top-4 right-10 w-1.5 h-1.5 bg-teal-200 rounded-full blur-[0.5px]"></div>
-                <div className="absolute bottom-6 left-12 w-2 h-2 bg-emerald-100 rounded-full blur-[0.5px]"></div>
+                
+                {/* Subtle sparkle/highlight accents */}
+                <div className="absolute top-[20%] right-[20%] w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_white] animate-pulse opacity-80 z-20"></div>
+                <div className="absolute bottom-[30%] left-[22%] w-1 h-1 bg-white rounded-full shadow-[0_0_4px_white] opacity-60 z-20"></div>
               </div>
 
               <h3 className="text-[28px] font-bold text-slate-800 mb-2 tracking-tight">

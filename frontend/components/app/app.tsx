@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { TokenSource } from 'livekit-client';
 import { useSession } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
@@ -27,6 +27,8 @@ interface AppProps {
 }
 
 export function App({ appConfig }: AppProps) {
+  const [sessionId, setSessionId] = useState(() => Math.random().toString(36).substring(2, 9));
+
   const tokenSource = useMemo(() => {
     let userId = '';
     if (typeof window !== 'undefined') {
@@ -40,8 +42,8 @@ export function App({ appConfig }: AppProps) {
 
     return typeof process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT === 'string'
       ? getSandboxTokenSource(appConfig)
-      : TokenSource.endpoint(`/api/token?user_id=${userId}`);
-  }, [appConfig]);
+      : TokenSource.endpoint(`/api/token?user_id=${userId}&session_id=${sessionId}`);
+  }, [appConfig, sessionId]);
 
   const session = useSession(
     tokenSource,
@@ -52,7 +54,10 @@ export function App({ appConfig }: AppProps) {
     <AgentSessionProvider session={session}>
       <AppSetup />
       <main className="grid h-svh grid-cols-1 place-content-center">
-        <ViewController appConfig={appConfig} />
+        <ViewController 
+          appConfig={appConfig} 
+          onCallEnded={() => setSessionId(Math.random().toString(36).substring(2, 9))}
+        />
       </main>
       <StartAudioButton label="Start Audio" />
       <Toaster

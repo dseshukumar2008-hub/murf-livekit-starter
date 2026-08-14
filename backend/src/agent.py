@@ -152,6 +152,35 @@ When you have successfully completed the user's request and they have received t
 """
 
 
+CARE_SPECIALIST_PROMPT = """You are Saathi's Care & Appointment Specialist. You help users navigate healthcare access and appointments.
+
+CRITICAL INSTRUCTIONS FOR YOUR FIRST RESPONSE:
+1. Introduce yourself: "Hi, I'm Saathi's Care Appointment Specialist."
+2. Acknowledge the user's original request based on the chat history.
+3. Simply ask them how you can help them further.
+
+EXAMPLE FIRST RESPONSE:
+"Hi, I'm Saathi's Care Appointment Specialist. I understand you need help finding a doctor. How can I assist you with that today?"
+
+RULES:
+- Do NOT ask for the user's location, district, or area in your first response.
+- Do NOT mention anything about finding a "health facility" or "directory". 
+- Just ask how you can help.
+- Always respond in the language the caller is currently using (Hindi in Devanagari, English in English).
+"""
+
+class CareAppointmentSpecialist(Agent):
+    def __init__(self, instructions: str, main_agent: 'Assistant') -> None:
+        super().__init__(instructions=instructions)
+        self.main_agent = main_agent
+
+    @function_tool
+    async def mark_request_resolved(self, context: RunContext):
+        """Call this tool when you have successfully completed the user's request and they have received the information or assistance they asked for."""
+        self.main_agent.call_successful = True
+        return "Marked as resolved successfully."
+
+
 class Assistant(Agent):
     def __init__(self, instructions: str) -> None:
         super().__init__(instructions=instructions)
@@ -478,6 +507,48 @@ class Assistant(Agent):
             self.call_successful = True
         return result
 
+    @function_tool
+    async def transfer_to_care_specialist(self, context: RunContext):
+        """Use this tool ONLY when the user's request specifically requires clinic information, doctor navigation, appointment assistance, or healthcare access/navigation. Do NOT use it for normal health/wellness questions that the main Saathi agent can answer."""
+        import asyncio
+        logger.info("[Handoff] Initiating transfer to CareAppointmentSpecialist")
+        
+        # Main agent announces the transfer (this returns a SpeechHandle)
+        speech_handle = context.session.say("I'll connect you with our care specialist who can help you with that.", add_to_chat_ctx=True)
+        
+        # Switch agent dynamically
+        specialist = CareAppointmentSpecialist(instructions=CARE_SPECIALIST_PROMPT, main_agent=self)
+        context.session.update_agent(specialist)
+        
+        async def trigger_handoff(handle):
+            try:
+                # Wait for the handoff announcement to finish speaking
+                if hasattr(handle, 'wait_for_playout'):
+                    await handle.wait_for_playout()
+                else:
+                    await asyncio.sleep(2)
+            except Exception as e:
+                logger.warning(f"[Handoff] Error waiting for speech: {e}")
+                await asyncio.sleep(1)
+            
+            # Scrub all previous system messages (including the main agent's facility lookup rules)
+            chat_ctx = context.session.chat_ctx
+            clean_messages = [msg for msg in chat_ctx.messages if msg.role != "system"]
+            chat_ctx.messages.clear()
+            for msg in clean_messages:
+                chat_ctx.messages.append(msg)
+                
+            # Trigger the new agent's response explicitly
+            chat_ctx.append(role="system", text="Handoff complete. You are now the active agent. Please introduce yourself to the user and continue the conversation.")
+            context.session.generate_reply()
+            
+        asyncio.create_task(trigger_handoff(speech_handle))
+        
+        # Raise StopResponse to immediately abort the main agent's generation loop
+        from livekit.agents import StopResponse
+        raise StopResponse()
+
+
 
 server = AgentServer()
 
@@ -579,10 +650,28 @@ async def my_agent(ctx: JobContext):
             logger.info(f"--- [LATENCY METRIC] user_speech_committed -> agent_started_speaking: {latency:.3f} seconds")
 
     # Join the room and connect to the user
-    await ctx.connect()
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            await ctx.connect()
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"Failed to connect (attempt {attempt + 1}/{max_retries}), retrying in 2s... Error: {e}")
+                import asyncio
+                await asyncio.sleep(2)
+            else:
+                logger.error(f"Failed to connect to room after {max_retries} attempts. Network issue? Error: {e}")
+                # We must throw an exception or call shutdown so LiveKit knows this job failed
+                raise e
     
     logger.info("[Memory] Agent session started")
-    participant = await ctx.wait_for_participant()
+    try:
+        participant = await ctx.wait_for_participant()
+    except Exception as e:
+        logger.warning(f"[Memory] Could not wait for participant (room disconnected?): {e}")
+        return
+        
     user_id = participant.identity
     logger.info(f"[Memory] Linked participant identity: {user_id}")
     logger.info("[Identity] Current client user_id: %s", user_id)
