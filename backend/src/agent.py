@@ -1,10 +1,10 @@
-import logging
-import sqlite3
-import json
-import os
-from datetime import datetime
 import asyncio
-import aiohttp.web
+import json
+import logging
+import os
+import sqlite3
+from datetime import datetime
+
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -13,16 +13,15 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
-    cli,
-    inference,
-    tokenize,
-    room_io,
-    function_tool,
     RunContext,
-    get_job_context,
+    cli,
+    function_tool,
+    room_io,
+    tokenize,
 )
-from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
+from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
 from prompts.escalation_prompt import ESCALATION_INSTRUCTIONS
 
 logger = logging.getLogger("agent")
@@ -201,7 +200,7 @@ class Assistant(Agent):
         """Call this tool when the user answers your consent question."""
         if self.memory_state != "WAITING_FOR_CONSENT":
             return "No consent pending."
-            
+
         if ambiguous:
             logger.info("[Memory Debug] Consent response: AMBIGUOUS")
             logger.info("[Memory Debug] Asking consent again")
@@ -210,11 +209,11 @@ class Assistant(Agent):
             consent_q = "Would you like me to remember this information to help you better in future conversations?"
             asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))
             return "APPLICATION OVERRIDE: You must ask the user for consent right now."
-            
+
         if approved:
             logger.info("[Memory Debug] Consent APPROVED")
             logger.info("[Memory Debug] Saving pending memory")
-            
+
             pending_mem = self.pending_memory or {}
             facts = pending_mem.get("facts", {})
             name = facts.get("name")
@@ -222,31 +221,31 @@ class Assistant(Agent):
             age_band = facts.get("age_band")
             ongoing_conditions = facts.get("ongoing_conditions")
             last_triage_outcome = facts.get("last_triage_outcome")
-            
+
             if self.current_profile_id and pending_mem:
-                
+
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
                 cursor.execute("SELECT facts FROM caller_profiles WHERE profile_id = ?", (self.current_profile_id,))
                 row = cursor.fetchone()
-                
+
                 existing_facts = {}
                 if row and row[0]:
                     try:
                         existing_facts = json.loads(row[0])
                     except ValueError:
                         pass
-                        
+
                 if age_band is not None:
                     existing_facts["age_band"] = age_band
                 if ongoing_conditions is not None:
                     existing_facts["ongoing_conditions"] = ongoing_conditions
                 if last_triage_outcome is not None:
                     existing_facts["last_triage_outcome"] = last_triage_outcome
-                    
+
                 facts_json = json.dumps(existing_facts) if existing_facts else None
                 now = datetime.now().isoformat()
-                
+
                 if row:
                     updates = []
                     params = []
@@ -258,13 +257,13 @@ class Assistant(Agent):
                     if language_preference is not None:
                         updates.append("language_preference = ?")
                         params.append(language_preference)
-                        
+
                     updates.append("facts = ?")
                     params.append(facts_json)
                     updates.append("last_interaction = ?")
                     params.append(now)
                     params.append(self.current_profile_id)
-                    
+
                     query = f"UPDATE caller_profiles SET {', '.join(updates)} WHERE profile_id = ?"
                     cursor.execute(query, params)
                 conn.commit()
@@ -283,32 +282,32 @@ class Assistant(Agent):
     @function_tool
     async def classify_triage_level(self, context: RunContext, symptoms: list[str], duration_days: int | None = None, severity_flags: list[str] | None = None):
         """Call this tool whenever the caller describes symptoms they are experiencing and needs guidance on how serious it is or what to do next. Do not call this for general health questions unrelated to a specific complaint."""
-        
+
         if not symptoms or len(symptoms) == 0:
             return json.dumps({
                 "triage_level": "needs_more_info",
                 "reasoning": "no specific symptoms provided",
                 "recommended_action": "I need a little more detail. Could you tell me exactly what symptoms you are experiencing?"
             })
-            
+
         symptoms_lower = [s.lower() for s in symptoms]
         flags_lower = [f.lower() for f in (severity_flags or [])]
-        
+
         urgent_triggers = [
-            "chest_pain", "difficulty_breathing", "severe_bleeding", 
+            "chest_pain", "difficulty_breathing", "severe_bleeding",
             "fainting", "pregnancy complications", "high fever", "very high fever"
         ]
-        
+
         # Check for urgent condition
         is_urgent = False
         reasoning = ""
-        
+
         for flag in flags_lower:
             if any(t in flag for t in urgent_triggers):
                 is_urgent = True
                 reasoning = f"red flag detected: {flag}"
                 break
-                
+
         # Also check symptoms for urgent triggers
         if not is_urgent:
             for sym in symptoms_lower:
@@ -316,23 +315,23 @@ class Assistant(Agent):
                     is_urgent = True
                     reasoning = f"red flag detected in symptom: {sym}"
                     break
-        
+
         # Check age/duration urgent triggers
         if not is_urgent and any("infant" in f or "under 1" in f for f in flags_lower + symptoms_lower):
             is_urgent = True
             reasoning = "infant under 1 year"
-            
+
         if not is_urgent and duration_days is not None and duration_days > 5:
             is_urgent = True
             reasoning = f"symptoms lasting {duration_days} days without improvement"
-            
+
         if is_urgent:
             return json.dumps({
                 "triage_level": "urgent",
                 "reasoning": reasoning,
                 "recommended_action": "This sounds like it could be serious. Please go to the nearest hospital right away or call the emergency number."
             })
-            
+
         # Check for moderate condition
         is_moderate = False
         if len(symptoms) > 1:
@@ -341,14 +340,14 @@ class Assistant(Agent):
         elif duration_days is not None and duration_days >= 2:
             is_moderate = True
             reasoning = f"symptom lasting {duration_days} days"
-            
+
         if is_moderate:
             return json.dumps({
                 "triage_level": "moderate",
                 "reasoning": reasoning,
                 "recommended_action": "You should visit the nearest primary health center or clinic to get this checked by a doctor."
             })
-            
+
         # Default to mild
         return json.dumps({
             "triage_level": "mild",
@@ -359,22 +358,22 @@ class Assistant(Agent):
     @function_tool
     async def lookup_caller(self, context: RunContext, name: str):
         """Use this tool to look up or create the caller's profile after they tell you their name. You MUST call this tool as soon as they provide their name."""
-        
+
         participant = context.session.room_io.linked_participant
         if not participant:
             logger.error("lookup_caller: No linked participant found in room")
             return "Caller not found. This is a new caller."
-            
+
         user_id = participant.identity
         normalized_name = name.strip().lower()
-        
+
         logger.info(f"[Identity] Looking up profile for user_id={user_id} name={name}")
-        
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT profile_id, name, language_preference, facts, last_interaction FROM caller_profiles WHERE user_id = ? AND normalized_name = ?", (user_id, normalized_name))
         row = cursor.fetchone()
-        
+
         if row:
             profile_id, stored_name, lang, facts, last_interaction = row
             self.current_profile_id = profile_id
@@ -386,24 +385,24 @@ class Assistant(Agent):
         else:
             import uuid
             from datetime import datetime
-            
+
             profile_id = f"profile_{uuid.uuid4().hex[:8]}"
             now = datetime.now().isoformat()
-            
-            logger.info(f"[Identity] No profile found for this name")
+
+            logger.info("[Identity] No profile found for this name")
             logger.info(f"[Identity] Creating new profile: profile_id={profile_id}")
             logger.info(f"[Memory] Active profile: {profile_id}")
-            
+
             cursor.execute(
                 "INSERT INTO caller_profiles (profile_id, user_id, name, normalized_name, last_interaction) VALUES (?, ?, ?, ?, ?)",
                 (profile_id, user_id, name, normalized_name, now)
             )
             conn.commit()
             conn.close()
-            
+
             self.current_profile_id = profile_id
             self.current_profile_name = name
-            
+
             return f"New profile created for {name}. They have no past memories. You may now say 'Nice to meet you, {name}!' and start a fresh conversation."
 
 
@@ -418,7 +417,7 @@ class Assistant(Agent):
         last_triage_outcome: str | None = None,
     ):
         """Save caller information to the database."""
-        
+
         if self.memory_state == "NORMAL_CONVERSATION":
             self.pending_memory = {
                 "facts": {
@@ -433,20 +432,20 @@ class Assistant(Agent):
             logger.info("[Memory Debug] Memory candidate submitted by LLM")
             logger.info("[Memory Debug] State changed: WAITING_FOR_CONSENT")
             logger.info("[Memory Debug] Normal response blocked. Triggering consent question.")
-            
+
             # Explicitly trigger the consent question via LiveKit synthesis
             import asyncio
-            # Fallback to English, but if we can infer language we should. 
+            # Fallback to English, but if we can infer language we should.
             # In save_caller_info we don't have msg.language, but we can assume English for the test.
             consent_q = "Would you like me to remember this information to help you better in future conversations?"
             asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))
-            
+
             return "APPLICATION OVERRIDE: Stop generating any further response. The application has just asked the user for consent on your behalf. Wait for the user to answer 'yes' or 'no'."
-            
+
         if self.memory_state != "CONSENT_APPROVED":
             logger.info("[Memory Debug] save_caller_info blocked")
             return "APPLICATION OVERRIDE: Memory operation blocked. Consent not approved."
-            
+
         logger.info(f"[Memory Debug] Saving data for user {context.session.room_io.linked_participant}")
 
     @function_tool
@@ -454,16 +453,16 @@ class Assistant(Agent):
         """Use this tool to find the nearest clinic or hospital in a given district."""
         district_lower = district.lower()
         care_level_lower = care_level.lower()
-        
+
         # Load from hand-built local dataset (facilities.json)
         facilities_path = os.path.join(os.path.dirname(__file__), "..", "facilities.json")
         try:
-            with open(facilities_path, "r", encoding="utf-8") as f:
+            with open(facilities_path, encoding="utf-8") as f:
                 MOCK_FACILITIES = json.load(f)
         except Exception as e:
             logger.error(f"Error loading facilities.json: {e}")
             MOCK_FACILITIES = {}
-        
+
         # We can implement fuzzy matching or fallback here
         for known_dist, facilities in MOCK_FACILITIES.items():
             if known_dist in district_lower:
@@ -475,7 +474,7 @@ class Assistant(Agent):
                         "phone": fac["phone"],
                         "spoken_fallback": "I found a facility in our local directory (updated recently)."
                     })
-                    
+
         return json.dumps({
             "status": "not_found",
             "spoken_fallback": "I'm sorry, I couldn't find a specific facility in my directory for that area. Please call your district health helpline or 108 emergency services for the nearest one."
@@ -483,8 +482,8 @@ class Assistant(Agent):
 
     @function_tool
     async def create_escalation(
-        self, 
-        context: RunContext, 
+        self,
+        context: RunContext,
         caller_identifier: str,
         what_happened: str,
         what_agent_checked: str,
@@ -510,16 +509,15 @@ class Assistant(Agent):
     @function_tool
     async def transfer_to_care_specialist(self, context: RunContext):
         """Use this tool ONLY when the user's request specifically requires clinic information, doctor navigation, appointment assistance, or healthcare access/navigation. Do NOT use it for normal health/wellness questions that the main Saathi agent can answer."""
-        import asyncio
         logger.info("[Handoff] Initiating transfer to CareAppointmentSpecialist")
-        
+
         # Main agent announces the transfer (this returns a SpeechHandle)
         speech_handle = context.session.say("I'll connect you with our care specialist who can help you with that.", add_to_chat_ctx=True)
-        
+
         # Switch agent dynamically
         specialist = CareAppointmentSpecialist(instructions=CARE_SPECIALIST_PROMPT, main_agent=self)
         context.session.update_agent(specialist)
-        
+
         async def trigger_handoff(handle):
             try:
                 # Wait for the handoff announcement to finish speaking
@@ -530,20 +528,20 @@ class Assistant(Agent):
             except Exception as e:
                 logger.warning(f"[Handoff] Error waiting for speech: {e}")
                 await asyncio.sleep(1)
-            
+
             # Scrub all previous system messages (including the main agent's facility lookup rules)
             chat_ctx = context.session.chat_ctx
             clean_messages = [msg for msg in chat_ctx.messages if msg.role != "system"]
             chat_ctx.messages.clear()
             for msg in clean_messages:
                 chat_ctx.messages.append(msg)
-                
+
             # Trigger the new agent's response explicitly
             chat_ctx.append(role="system", text="Handoff complete. You are now the active agent. Please introduce yourself to the user and continue the conversation.")
             context.session.generate_reply()
-            
+
         asyncio.create_task(trigger_handoff(speech_handle))
-        
+
         # Raise StopResponse to immediately abort the main agent's generation loop
         from livekit.agents import StopResponse
         raise StopResponse()
@@ -581,7 +579,7 @@ async def my_agent(ctx: JobContext):
         # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
         # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
         tts=murf.TTS(
-                voice="Anisha", 
+                voice="Anisha",
                 style="Conversation",
                 tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
                 text_pacing=True
@@ -625,13 +623,13 @@ async def my_agent(ctx: JobContext):
         turn_timing["user_commit"] = time.time()
         transcript = msg.alternatives[0].text if hasattr(msg, "alternatives") and msg.alternatives else getattr(msg, "text", "")
         lang = getattr(msg, 'language', getattr(msg, 'language_code', 'en'))
-        
+
         logger.info("[Memory Debug] User message received")
         logger.info(f"[Language Debug] User transcript: {transcript}")
         logger.info(f"[Language Debug] Detected language: {lang}")
         logger.info(f"[Language Debug] Current conversation language: {lang}")
         logger.info(f"[Language Debug] USER: {lang}")
-        
+
         # PROGRAMMATIC LANGUAGE ENFORCEMENT PER TURN for normal responses
         session.chat_ctx.append(
             role="system",
@@ -664,20 +662,20 @@ async def my_agent(ctx: JobContext):
                 logger.error(f"Failed to connect to room after {max_retries} attempts. Network issue? Error: {e}")
                 # We must throw an exception or call shutdown so LiveKit knows this job failed
                 raise e
-    
+
     logger.info("[Memory] Agent session started")
     try:
         participant = await ctx.wait_for_participant()
     except Exception as e:
         logger.warning(f"[Memory] Could not wait for participant (room disconnected?): {e}")
         return
-        
+
     user_id = participant.identity
     logger.info(f"[Memory] Linked participant identity: {user_id}")
     logger.info("[Identity] Current client user_id: %s", user_id)
-    
+
     dynamic_prompt = SYSTEM_PROMPT + "\n\n" + ESCALATION_INSTRUCTIONS
-    
+
     greeting_instructions = """
 INITIAL GREETING
 You must ALWAYS start the conversation by asking for the caller's name.

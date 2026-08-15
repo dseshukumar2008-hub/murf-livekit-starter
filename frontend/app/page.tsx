@@ -1,6 +1,6 @@
 import { headers } from 'next/headers';
-import { ClientPage } from './client-page';
 import { getAppConfig } from '@/lib/utils';
+import { ClientPage } from './client-page';
 
 export default async function Page() {
   const hdrs = await headers();

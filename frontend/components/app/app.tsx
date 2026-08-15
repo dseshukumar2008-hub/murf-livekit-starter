@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TokenSource } from 'livekit-client';
 import { useSession } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
@@ -47,15 +47,17 @@ export function App({ appConfig }: AppProps) {
 
   const session = useSession(
     tokenSource,
-    appConfig.agentName ? { agentName: appConfig.agentName, agentConnectTimeoutMilliseconds: 60000 } : undefined
+    appConfig.agentName
+      ? { agentName: appConfig.agentName, agentConnectTimeoutMilliseconds: 60000 }
+      : undefined
   );
 
   return (
     <AgentSessionProvider session={session}>
       <AppSetup />
       <main className="grid h-svh grid-cols-1 place-content-center">
-        <ViewController 
-          appConfig={appConfig} 
+        <ViewController
+          appConfig={appConfig}
           onCallEnded={() => setSessionId(Math.random().toString(36).substring(2, 9))}
         />
       </main>

@@ -58,39 +58,80 @@ export function AgentChatTranscript({
           const { id, from, message, timestamp } = receivedMessage;
           const isUser = from?.isLocal;
           const messageOrigin = isUser ? 'user' : 'assistant';
-          const timeString = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          
+          const timeString = new Date(timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+
           return (
-            <div key={id} className={`flex gap-3 px-4 py-2.5 rounded-lg border ${isUser ? 'bg-white border-transparent' : 'bg-[#F1FBF7] border-[#E8F8F2]/50'}`}>
+            <div
+              key={id}
+              className={`flex gap-3 rounded-lg border px-4 py-2.5 ${isUser ? 'border-transparent bg-white' : 'border-[#E8F8F2]/50 bg-[#F1FBF7]'}`}
+            >
               {/* Icon */}
-              <div className="shrink-0 mt-0.5">
+              <div className="mt-0.5 shrink-0">
                 {isUser ? (
-                  <div className="w-[30px] h-[30px] rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#7185A0]">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#f1f5f9] text-[#7185A0]">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
                   </div>
                 ) : (
-                  <div className="w-[30px] h-[30px] rounded-full bg-[#008F6B] flex items-center justify-center text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 9.53a11 11 0 0 0-2.29 2.77"/><path d="M12 5l2.96 4.53a11 11 0 0 1 2.29 2.77"/></svg>
+                  <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#008F6B] text-white">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                      <path d="M12 5 9.04 9.53a11 11 0 0 0-2.29 2.77" />
+                      <path d="M12 5l2.96 4.53a11 11 0 0 1 2.29 2.77" />
+                    </svg>
                   </div>
                 )}
               </div>
-              
+
               {/* Message Content */}
-              <div className="flex flex-col w-full min-w-0">
-                <div className="flex items-center justify-between w-full mb-0.5">
-                  <div className={`font-semibold text-[15px] leading-none ${isUser ? 'text-[#142A44]' : 'text-[#008F6B]'}`}>
-                    {isUser 
-                      ? 'You' 
-                      : (messages.findIndex(m => !m.from?.isLocal && m.message.includes("I'll connect you with our care specialist")) !== -1 && 
-                         messages.findIndex(m => !m.from?.isLocal && m.message.includes("I'll connect you with our care specialist")) < messages.indexOf(receivedMessage))
+              <div className="flex w-full min-w-0 flex-col">
+                <div className="mb-0.5 flex w-full items-center justify-between">
+                  <div
+                    className={`text-[15px] leading-none font-semibold ${isUser ? 'text-[#142A44]' : 'text-[#008F6B]'}`}
+                  >
+                    {isUser
+                      ? 'You'
+                      : messages.findIndex(
+                            (m) =>
+                              !m.from?.isLocal &&
+                              m.message.includes("I'll connect you with our care specialist")
+                          ) !== -1 &&
+                          messages.findIndex(
+                            (m) =>
+                              !m.from?.isLocal &&
+                              m.message.includes("I'll connect you with our care specialist")
+                          ) < messages.indexOf(receivedMessage)
                         ? 'Care Specialist'
                         : 'Saathi'}
                   </div>
-                  <div className="text-[12px] text-[#7185A0] font-medium">
-                    {timeString}
-                  </div>
+                  <div className="text-[12px] font-medium text-[#7185A0]">{timeString}</div>
                 </div>
-                <div className="text-[15px] text-[#142A44] leading-relaxed font-normal pr-1">
+                <div className="pr-1 text-[15px] leading-relaxed font-normal text-[#142A44]">
                   {message}
                 </div>
               </div>

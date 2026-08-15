@@ -13,7 +13,7 @@ if not records:
 else:
     for r in records:
         print(f"FOUND RECORD: user_id={r[0]}, name={r[1]}, facts={r[3]}")
-    
+
     # Delete Ramesh
     c.execute("DELETE FROM callers WHERE LOWER(name) = 'ramesh'")
     conn.commit()

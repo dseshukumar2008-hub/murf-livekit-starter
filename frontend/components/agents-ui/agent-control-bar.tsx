@@ -289,7 +289,9 @@ export function AgentControlBar({
       aria-label="Voice assistant controls"
       className={cn(
         'bg-background border-input/50 dark:border-muted flex flex-col border p-3 drop-shadow-md/3',
-        variant === 'livekit' ? 'rounded-full px-4 py-2 bg-white shadow-lg flex-row items-center justify-center border-slate-100 w-max' : 'rounded-lg',
+        variant === 'livekit'
+          ? 'w-max flex-row items-center justify-center rounded-full border-slate-100 bg-white px-4 py-2 shadow-lg'
+          : 'rounded-lg',
         className
       )}
       {...props}
@@ -382,7 +384,7 @@ export function AgentControlBar({
             disabled={!isConnected}
             className={cn(
               variant === 'livekit' &&
-                'bg-red-500 text-white hover:bg-red-600 focus:bg-red-600 rounded-full font-sans text-[14px] font-semibold px-6 py-2 shadow-sm ml-2 flex items-center gap-2 border-none shrink-0'
+                'ml-2 flex shrink-0 items-center gap-2 rounded-full border-none bg-red-500 px-6 py-2 font-sans text-[14px] font-semibold text-white shadow-sm hover:bg-red-600 focus:bg-red-600'
             )}
           >
             <span className="hidden md:inline">End Call</span>

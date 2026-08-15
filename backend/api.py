@@ -1,7 +1,7 @@
-import sqlite3
-import aiohttp.web
-import asyncio
 import os
+import sqlite3
+
+import aiohttp.web
 
 DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "callers.db"))
 
@@ -14,7 +14,7 @@ async def handle_analytics(request):
         stats = {"successful": 0, "failed": 0}
         for row in rows:
             stats[row[0]] = row[1]
-            
+
         cursor.execute("SELECT outcome, created_at FROM call_analytics ORDER BY created_at DESC LIMIT 5")
         recent_rows = cursor.fetchall()
         recent_calls = []
@@ -26,7 +26,7 @@ async def handle_analytics(request):
                 "createdAt": row[1],
                 "description": desc
             })
-            
+
         return aiohttp.web.json_response({
             "totalCalls": stats["successful"] + stats["failed"],
             "successfulCalls": stats["successful"],

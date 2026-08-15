@@ -1,13 +1,30 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import {
+  ChevronDown,
+  Clock,
+  Globe,
+  HeartPulse,
+  Info,
+  Leaf,
+  Mic,
+  MicOff,
+  Phone,
+  PhoneOff,
+  Shield,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
 import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
-import { AudioVisualizer } from './audio-visualizer';
+import {
+  AgentControlBar,
+  type AgentControlBarControls,
+} from '@/components/agents-ui/agent-control-bar';
 import { cn } from '@/lib/shadcn/utils';
-import { HeartPulse, Globe, Info, ShieldCheck, Phone, PhoneOff, MicOff, Mic, Clock, Users, Leaf, Shield, ChevronDown } from 'lucide-react';
-import { AgentControlBar, type AgentControlBarControls } from '@/components/agents-ui/agent-control-bar';
+import { AudioVisualizer } from './audio-visualizer';
 
 export interface AgentSessionView_01Props {
   preConnectMessage?: string;
@@ -48,7 +65,8 @@ export function AgentSessionView_01({
   const session = useSessionContext();
   const { messages } = useSessionMessages(session);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { state: agentState } = useAgent();
+  const agent = useAgent();
+  const agentState = agent.state;
 
   const controls: AgentControlBarControls = {
     leave: true,
@@ -62,10 +80,13 @@ export function AgentSessionView_01({
 
   useEffect(() => {
     // Basic check if mic is somehow denied while in session
-    navigator.permissions?.query({ name: 'microphone' as PermissionName }).then((res) => {
-      if (res.state === 'denied') setMicDenied(true);
-      res.onchange = () => setMicDenied(res.state === 'denied');
-    }).catch(() => {});
+    navigator.permissions
+      ?.query({ name: 'microphone' as PermissionName })
+      .then((res) => {
+        if (res.state === 'denied') setMicDenied(true);
+        res.onchange = () => setMicDenied(res.state === 'denied');
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -76,34 +97,47 @@ export function AgentSessionView_01({
 
   const getStatusPill = () => {
     switch (agentState) {
-      case 'connecting': return { text: 'Connecting...', color: 'text-amber-700 bg-amber-100', icon: '●' };
-      case 'listening': return { text: 'Listening...', color: 'text-teal-700 bg-teal-100', icon: '●' };
-      case 'speaking': return { text: 'Speaking...', color: 'text-blue-700 bg-blue-100', icon: '●' };
-      case 'thinking': return { text: 'Thinking...', color: 'text-purple-700 bg-purple-100', icon: '●' };
-      case 'disconnected': return { text: 'Call Ended', color: 'text-emerald-700 bg-emerald-100', icon: '✓' };
-      default: return { text: 'Connecting...', color: 'text-amber-700 bg-amber-100', icon: '●' };
+      case 'connecting':
+        return { text: 'Connecting...', color: 'text-amber-700 bg-amber-100', icon: '●' };
+      case 'listening':
+        return { text: 'Listening...', color: 'text-teal-700 bg-teal-100', icon: '●' };
+      case 'speaking':
+        return { text: 'Speaking...', color: 'text-blue-700 bg-blue-100', icon: '●' };
+      case 'thinking':
+        return { text: 'Thinking...', color: 'text-purple-700 bg-purple-100', icon: '●' };
+      case 'disconnected':
+        return { text: 'Call Ended', color: 'text-emerald-700 bg-emerald-100', icon: '✓' };
+      default:
+        return { text: 'Connecting...', color: 'text-amber-700 bg-amber-100', icon: '●' };
     }
   };
-
-  const agent = useAgent();
-  const agentState = agent.state;
 
   const getAssistantText = () => {
     // Derive the display name from the actual LiveKit agent state
     let displayName = 'Saathi';
     if (agent.name && agent.name.toLowerCase().includes('specialist')) {
       displayName = 'Care Specialist';
-    } else if (agent.attributes && agent.attributes.agentName && (agent.attributes.agentName as string).toLowerCase().includes('specialist')) {
+    } else if (
+      agent.attributes &&
+      agent.attributes.agentName &&
+      (agent.attributes.agentName as string).toLowerCase().includes('specialist')
+    ) {
       displayName = 'Care Specialist';
     }
 
     switch (agentState) {
-      case 'connecting': return 'Connecting securely...';
-      case 'listening': return `${displayName} is listening...`;
-      case 'speaking': return `${displayName} is speaking...`;
-      case 'thinking': return `${displayName} is thinking...`;
-      case 'disconnected': return 'Your conversation has ended.';
-      default: return 'Connecting securely...';
+      case 'connecting':
+        return 'Connecting securely...';
+      case 'listening':
+        return `${displayName} is listening...`;
+      case 'speaking':
+        return `${displayName} is speaking...`;
+      case 'thinking':
+        return `${displayName} is thinking...`;
+      case 'disconnected':
+        return 'Your conversation has ended.';
+      default:
+        return 'Connecting securely...';
     }
   };
 
@@ -111,35 +145,41 @@ export function AgentSessionView_01({
   const dynamicVisualizerType = 'wave'; // Always wave for the reference layout
 
   return (
-    <section className={cn('bg-[#f8fdfb] min-h-screen flex flex-col font-sans text-slate-800', className)} {...props}>
+    <section
+      className={cn('flex min-h-screen flex-col bg-[#f8fdfb] font-sans text-slate-800', className)}
+      {...props}
+    >
       {/* HEADER */}
-      <header className="flex justify-between items-center py-4 px-6 lg:px-8 w-full shrink-0 border-b border-teal-50 bg-white">
+      <header className="flex w-full shrink-0 items-center justify-between border-b border-teal-50 bg-white px-6 py-4 lg:px-8">
         <div className="flex items-center gap-3">
-          <div className="bg-[#008F70] p-1.5 rounded-md text-white flex items-center justify-center">
+          <div className="flex items-center justify-center rounded-md bg-[#008F70] p-1.5 text-white">
             <HeartPulse size={24} strokeWidth={2.5} />
           </div>
           <div className="leading-tight">
             <h1 className="text-xl font-bold text-[#006F5B]">Saathi</h1>
-            <p className="text-xs text-slate-500 font-medium">Your Voice. Your Health. Our Priority.</p>
+            <p className="text-xs font-medium text-slate-500">
+              Your Voice. Your Health. Our Priority.
+            </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-2.5">
-          <div className="text-slate-500 font-mono text-[10px] font-bold tracking-wider uppercase">
+          <div className="font-mono text-[10px] font-bold tracking-wider text-slate-500 uppercase">
             Built with{' '}
             <a
               target="_blank"
               rel="noopener noreferrer"
               href="https://docs.livekit.io/agents"
-              className="underline underline-offset-4 hover:text-slate-800 transition-colors"
+              className="underline underline-offset-4 transition-colors hover:text-slate-800"
             >
               LiveKit Agents
             </a>
           </div>
           <div className="flex items-center gap-3">
-            <button className="hidden sm:flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm text-slate-700 hover:bg-slate-50">
-              <Globe size={14} className="text-slate-500" /> English <ChevronDown size={14} className="text-slate-400" />
+            <button className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:flex">
+              <Globe size={14} className="text-slate-500" /> English{' '}
+              <ChevronDown size={14} className="text-slate-400" />
             </button>
-            <button className="flex items-center gap-1.5 bg-[#edf9f3] text-teal-800 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-teal-50">
+            <button className="flex items-center gap-1.5 rounded-full bg-[#edf9f3] px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50">
               <Info size={14} /> About Saathi
             </button>
           </div>
@@ -147,91 +187,107 @@ export function AgentSessionView_01({
       </header>
 
       {/* MAIN DASHBOARD */}
-      <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 flex flex-col">
-        <div className="max-w-[1500px] w-full mx-auto flex-1 flex flex-col min-h-0">
-          
+      <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6 lg:px-8">
+        <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 flex-col">
           {/* THREE COLUMN GRID */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(240px,20fr)_minmax(400px,55fr)_minmax(280px,25fr)] gap-6 min-h-0">
-            
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[minmax(240px,20fr)_minmax(400px,55fr)_minmax(280px,25fr)]">
             {/* LEFT SIDEBAR (≈20%) */}
             <div className="flex flex-col gap-3 pr-2 pb-4">
-              
-              <div className="bg-[#F2FBF7] border-2 border-[#00A878] text-[#006F5B] font-bold px-4 py-3.5 rounded-2xl flex items-center justify-between shadow-sm cursor-pointer">
+              <div className="flex cursor-pointer items-center justify-between rounded-2xl border-2 border-[#00A878] bg-[#F2FBF7] px-4 py-3.5 font-bold text-[#006F5B] shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="bg-[#E8F8F2] p-2 rounded-full">
+                  <div className="rounded-full bg-[#E8F8F2] p-2">
                     <Mic size={18} className="text-[#008F70]" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[14px]">Voice Assistant</span>
-                    <span className="text-[11.5px] text-[#008F70] font-semibold mt-0.5">Talk to Saathi</span>
+                    <span className="mt-0.5 text-[11.5px] font-semibold text-[#008F70]">
+                      Talk to Saathi
+                    </span>
                   </div>
                 </div>
                 <ChevronDown size={16} className="-rotate-90 text-[#008F70]" />
               </div>
 
-              <div className="bg-white border border-slate-100 px-4 py-3.5 rounded-2xl flex items-center gap-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] cursor-pointer hover:bg-slate-50 transition-colors">
-                <div className="bg-slate-50 p-2 rounded-full border border-slate-100">
+              <div className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-colors hover:bg-slate-50">
+                <div className="rounded-full border border-slate-100 bg-slate-50 p-2">
                   <ShieldCheck size={18} className="text-slate-500" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[14px] font-bold text-slate-700">Health & Privacy</span>
-                  <span className="text-[11.5px] text-slate-500 font-semibold mt-0.5">Your data is safe</span>
+                  <span className="mt-0.5 text-[11.5px] font-semibold text-slate-500">
+                    Your data is safe
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-100 px-4 py-3.5 rounded-2xl flex items-center gap-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] cursor-pointer hover:bg-slate-50 transition-colors">
-                <div className="bg-slate-50 p-2 rounded-full border border-slate-100">
+              <div className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-colors hover:bg-slate-50">
+                <div className="rounded-full border border-slate-100 bg-slate-50 p-2">
                   <Info size={18} className="text-slate-500" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[14px] font-bold text-slate-700">How Saathi Works</span>
-                  <span className="text-[11.5px] text-slate-500 font-semibold mt-0.5">Learn more</span>
+                  <span className="mt-0.5 text-[11.5px] font-semibold text-slate-500">
+                    Learn more
+                  </span>
                 </div>
               </div>
 
               {/* SECURITY CARD */}
-              <div className="bg-gradient-to-b from-[#F2FBF7] to-[#E8F8F2] border border-[#00A878]/10 p-6 rounded-2xl shadow-sm mt-4 flex flex-col items-center text-center">
-                <div className="bg-[#008F70] p-3 rounded-xl text-white w-max mb-4 shadow-md">
+              <div className="mt-4 flex flex-col items-center rounded-2xl border border-[#00A878]/10 bg-gradient-to-b from-[#F2FBF7] to-[#E8F8F2] p-6 text-center shadow-sm">
+                <div className="mb-4 w-max rounded-xl bg-[#008F70] p-3 text-white shadow-md">
                   <ShieldCheck size={28} strokeWidth={2} />
                 </div>
-                <h4 className="font-bold text-[#006F5B] text-[16px] mb-2 leading-tight">Your Health.<br/>Your Data.<br/>Always Secure.</h4>
-                <p className="text-[12px] text-slate-600 font-medium mb-5 px-2">Your conversations are private and encrypted end-to-end.</p>
-                
-                <div className="bg-[#E8F8F2] text-[#008F70] text-[11px] font-bold px-3 py-1.5 rounded-full border border-[#00A878]/20 flex items-center gap-1.5 w-full justify-center">
+                <h4 className="mb-2 text-[16px] leading-tight font-bold text-[#006F5B]">
+                  Your Health.
+                  <br />
+                  Your Data.
+                  <br />
+                  Always Secure.
+                </h4>
+                <p className="mb-5 px-2 text-[12px] font-medium text-slate-600">
+                  Your conversations are private and encrypted end-to-end.
+                </p>
+
+                <div className="flex w-full items-center justify-center gap-1.5 rounded-full border border-[#00A878]/20 bg-[#E8F8F2] px-3 py-1.5 text-[11px] font-bold text-[#008F70]">
                   <Shield size={12} className="text-[#008F70]" /> Enterprise-grade security
                 </div>
               </div>
 
               {micDenied && (
-                <div className="bg-[#fef2f2] border border-red-100 p-4 rounded-2xl mt-4">
-                  <div className="flex items-start gap-3 mb-2">
-                    <MicOff size={16} className="text-red-500 mt-0.5 shrink-0"/>
+                <div className="mt-4 rounded-2xl border border-red-100 bg-[#fef2f2] p-4">
+                  <div className="mb-2 flex items-start gap-3">
+                    <MicOff size={16} className="mt-0.5 shrink-0 text-red-500" />
                     <div>
-                      <h4 className="text-red-600 font-bold text-[13px] mb-1">Mic Denied</h4>
-                      <p className="text-slate-600 text-[11px] font-medium leading-relaxed">Please allow microphone access to continue.</p>
+                      <h4 className="mb-1 text-[13px] font-bold text-red-600">Mic Denied</h4>
+                      <p className="text-[11px] leading-relaxed font-medium text-slate-600">
+                        Please allow microphone access to continue.
+                      </p>
                     </div>
                   </div>
-                  <button onClick={() => window.location.reload()} className="w-full py-1.5 mt-2 bg-red-50 text-red-600 text-[11px] font-bold rounded-lg border border-red-100 flex items-center justify-center gap-2 hover:bg-red-100 transition-colors">⟳ Try Again</button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-red-100 bg-red-50 py-1.5 text-[11px] font-bold text-red-600 transition-colors hover:bg-red-100"
+                  >
+                    ⟳ Try Again
+                  </button>
                 </div>
               )}
             </div>
 
             {/* CENTER MAIN CALL PANEL (≈55%) */}
-            <div className="bg-white border border-emerald-50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden flex flex-col relative min-h-[600px] h-full">
-              <div className="absolute inset-0 bg-gradient-to-b from-[#f2faf7]/60 to-white pointer-events-none"></div>
-              
-              <div className="relative z-10 flex flex-col items-center pt-8 pb-8 h-full justify-between">
-                
+            <div className="relative flex h-full min-h-[600px] flex-col overflow-hidden rounded-3xl border border-emerald-50 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#f2faf7]/60 to-white"></div>
+
+              <div className="relative z-10 flex h-full flex-col items-center justify-between pt-8 pb-8">
                 {/* Status Pill */}
-                <div className="bg-[#F2FBF7] text-[#008F70] px-4 py-1.5 rounded-full text-[13px] font-bold tracking-wide shadow-sm border border-[#00A878]/20 flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-full border border-[#00A878]/20 bg-[#F2FBF7] px-4 py-1.5 text-[13px] font-bold tracking-wide text-[#008F70] shadow-sm">
                   <Shield size={14} className="text-[#00A878]" /> Connected Securely
                 </div>
 
                 {/* Avatar and Visualizer Container */}
-                <div className="relative flex items-center justify-center w-full my-4 grow">
-                  
+                <div className="relative my-4 flex w-full grow items-center justify-center">
                   {/* Waveform / Visualizer (Behind) */}
-                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden opacity-90 mix-blend-multiply pointer-events-none">
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden opacity-90 mix-blend-multiply">
                     <AudioVisualizer
                       audioVisualizerType={dynamicVisualizerType}
                       audioVisualizerColor={audioVisualizerColor || '#00A878'}
@@ -243,85 +299,110 @@ export function AgentSessionView_01({
                       audioVisualizerGridColumnCount={audioVisualizerGridColumnCount}
                       audioVisualizerWaveLineWidth={audioVisualizerWaveLineWidth || 3}
                       isChatOpen={true}
-                      className="w-full h-full scale-[2.5] lg:scale-[3.5]"
+                      className="h-full w-full scale-[2.5] lg:scale-[3.5]"
                     />
                   </div>
 
                   {/* Saathi Avatar */}
-                  <div className="relative z-10 flex items-center justify-center w-56 h-56 lg:w-72 lg:h-72 shrink-0">
+                  <div className="relative z-10 flex h-56 w-56 shrink-0 items-center justify-center lg:h-72 lg:w-72">
                     <div className="absolute inset-0 rounded-full border-[8px] border-[#d8f4e6] bg-[#f5fbf8] shadow-[0_0_50px_rgba(16,185,129,0.15)]"></div>
-                    <div className="absolute inset-2 rounded-full border-[6px] border-white shadow-xl overflow-hidden bg-[#e2f4ec] flex items-center justify-center">
-                      <img 
-                        src="/saathi-avatar.png" 
-                        alt="Saathi Avatar" 
-                        className="w-full h-full object-cover"
+                    <div className="absolute inset-2 flex items-center justify-center overflow-hidden rounded-full border-[6px] border-white bg-[#e2f4ec] shadow-xl">
+                      <img
+                        src="/saathi-avatar.png"
+                        alt="Saathi Avatar"
+                        className="h-full w-full object-cover"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Text and Security Pill */}
-                <div className="text-center px-4 mb-8 flex flex-col items-center z-20">
-                  <h3 className="text-[26px] font-bold text-[#006F5B] mb-4">{getAssistantText()}</h3>
-                  
-                  <div className="bg-[#F2FBF7] text-[#008F70] text-[12px] font-semibold px-4 py-1.5 rounded-full border border-[#00A878]/20 flex items-center gap-2 shadow-sm">
-                    <ShieldCheck size={14} className="text-[#00A878]" /> Your conversation is secure and private
+                <div className="z-20 mb-8 flex flex-col items-center px-4 text-center">
+                  <h3 className="mb-4 text-[26px] font-bold text-[#006F5B]">
+                    {getAssistantText()}
+                  </h3>
+
+                  <div className="flex items-center gap-2 rounded-full border border-[#00A878]/20 bg-[#F2FBF7] px-4 py-1.5 text-[12px] font-semibold text-[#008F70] shadow-sm">
+                    <ShieldCheck size={14} className="text-[#00A878]" /> Your conversation is secure
+                    and private
                   </div>
                 </div>
 
                 {/* LiveKit Controls */}
-                <div className="z-20 w-full flex justify-center px-4">
+                <div className="z-20 flex w-full justify-center px-4">
                   <AgentControlBar
                     variant="livekit"
                     controls={controls}
                     isChatOpen={true}
                     isConnected={session.isConnected}
                     onDisconnect={() => session.end()}
-                    className="bg-white border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.06)] rounded-full p-2.5 max-w-max"
+                    className="max-w-max rounded-full border border-slate-100 bg-white p-2.5 shadow-[0_4px_20px_rgb(0,0,0,0.06)]"
                   />
                 </div>
               </div>
             </div>
 
             {/* RIGHT LIVE TRANSCRIPT PANEL (≈25%) */}
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm flex flex-col h-[500px] lg:h-full min-h-[600px] overflow-hidden relative">
-              
-              <div className="flex items-center justify-between px-5 h-[72px] border-b border-slate-100 bg-white z-10 shrink-0">
+            <div className="relative flex h-[500px] min-h-[600px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm lg:h-full">
+              <div className="z-10 flex h-[72px] shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-[#142A44] text-[20px]">Live Transcript</h3>
-                  <span className="bg-[#E8F8F2] text-[#008F6B] text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ml-1">beta</span>
+                  <h3 className="text-[20px] font-bold text-[#142A44]">Live Transcript</h3>
+                  <span className="ml-1 rounded bg-[#E8F8F2] px-2 py-0.5 text-[10px] font-bold tracking-wider text-[#008F6B] uppercase">
+                    beta
+                  </span>
                 </div>
-                <div className="text-[#008F6B] flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 6v12"/><path d="M8 10v4"/><path d="M16 10v4"/><path d="M20 12v.01"/><path d="M4 12v.01"/></svg>
+                <div className="flex items-center text-[#008F6B]">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 6v12" />
+                    <path d="M8 10v4" />
+                    <path d="M16 10v4" />
+                    <path d="M20 12v.01" />
+                    <path d="M4 12v.01" />
+                  </svg>
                 </div>
               </div>
-              
-              <div className="flex-1 overflow-y-auto bg-white [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full" ref={scrollAreaRef}>
-                 <div className="px-5 pt-3 w-full max-w-full pb-[60px]">
-                   <AgentChatTranscript
-                     agentState={agentState}
-                     messages={messages}
-                     className="w-full"
-                   />
-                 </div>
+
+              <div
+                className="flex-1 overflow-y-auto bg-white [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-200"
+                ref={scrollAreaRef}
+              >
+                <div className="w-full max-w-full px-5 pt-3 pb-[60px]">
+                  <AgentChatTranscript
+                    agentState={agentState}
+                    messages={messages}
+                    className="w-full"
+                  />
+                </div>
               </div>
 
               {/* Fixed Footer inside Transcript */}
-              <div className="absolute bottom-0 left-0 right-0 h-[48px] px-5 border-t border-slate-100 bg-white/95 backdrop-blur text-[12px] text-[#008F6B] font-semibold flex items-center gap-2 shrink-0 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
-                <div className="w-1.5 h-1.5 bg-[#008F6B] rounded-full shrink-0"></div>
+              <div className="absolute right-0 bottom-0 left-0 z-20 flex h-[48px] shrink-0 items-center gap-2 border-t border-slate-100 bg-white/95 px-5 text-[12px] font-semibold text-[#008F6B] shadow-[0_-2px_10px_rgba(0,0,0,0.02)] backdrop-blur">
+                <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#008F6B]"></div>
                 Transcript is live and secure
               </div>
             </div>
-
           </div>
         </div>
       </div>
 
       {/* FULL WIDTH BOTTOM DISCLAIMER FOOTER */}
-      <footer className="w-full bg-[#11674e] text-white py-3 px-4 shrink-0 relative z-30">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2.5 text-[12px] font-medium text-emerald-50/90 text-center flex-wrap">
-          <ShieldCheck size={16} className="text-emerald-300 shrink-0" strokeWidth={2.5} />
-          <p>This is not a replacement for professional medical advice. In case of emergency, please contact your local emergency services.</p>
+      <footer className="relative z-30 w-full shrink-0 bg-[#11674e] px-4 py-3 text-white">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-2.5 text-center text-[12px] font-medium text-emerald-50/90">
+          <ShieldCheck size={16} className="shrink-0 text-emerald-300" strokeWidth={2.5} />
+          <p>
+            This is not a replacement for professional medical advice. In case of emergency, please
+            contact your local emergency services.
+          </p>
         </div>
       </footer>
     </section>

@@ -1,6 +1,6 @@
-# Voice Agent Starter — Powered by Murf Falcon
+# Saathi: AI Healthcare Voice Assistant — Powered by Murf Falcon
 
-Build a production voice AI agent in 5 minutes. Powered by the fastest TTS on the market - swap the system prompt to build anything from customer support to language tutors.
+Saathi is a bilingual (Hindi and English) voice assistant designed to help patients navigate healthcare information, remember their medical context, and seamlessly escalate complex issues or book appointments with specialist human agents. Built during the **10 Days of Voice Agents — VoiceForBharat Edition**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Murf Falcon](https://img.shields.io/badge/TTS-Murf%20Falcon-6366F1)](https://murf.ai/api/docs/text-to-speech/streaming) [![LiveKit](https://img.shields.io/badge/Transport-LiveKit-002cf2)](https://docs.livekit.io) [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
@@ -16,14 +16,27 @@ Build a production voice AI agent in 5 minutes. Powered by the fastest TTS on th
 
 ---
 
+## Features (10 Days of Voice Agents)
+
+- **Bilingual Indian Voices**: Uses Murf Falcon for fast, expressive Hindi and English TTS.
+- **Intelligent Memory**: Uses SQLite to remember user context across multiple calls based on their identity.
+- **Tools & Facility Lookups**: Uses tools to fetch details on nearby clinics and hospitals based on the user's location.
+- **Specialist Handoffs**: Automatically routes the caller to a secondary `CareAppointmentSpecialist` agent for specialized care or appointment booking.
+- **Human Escalation**: High-urgency cases trigger an escalation tool that alerts a human care team immediately via a Discord webhook.
+- **Outbound Calling**: Capable of initiating outbound calls to follow up with patients.
+- **Call Analytics Dashboard**: A custom-built, premium SaaS-style React frontend that visualizes total calls, success rates, and recent call outcomes in real time.
+
 ## Architecture
 
 ```mermaid
 flowchart LR
     A[🎙️ User speaks] -->|audio| B[Deepgram STT]
-    B -->|text| C[LLM]
+    B -->|text| C[LLM (OpenAI GPT-4o)]
+    C -->|Memory / Tools| DB[(SQLite / External APIs)]
     C -->|response text| D[Murf Falcon TTS]
+    C -->|Handoff| G[Care Specialist Agent]
     D -->|audio| E[LiveKit]
+    G -->|audio| E
     E -->|stream| F[🔊 User hears]
 
     style A fill:#444441,stroke:#888780,color:#fff
@@ -32,6 +45,8 @@ flowchart LR
     style D fill:#0F6E56,stroke:#5DCAA5,color:#fff
     style E fill:#D85A30,stroke:#F0997B,color:#fff
     style F fill:#444441,stroke:#888780,color:#fff
+    style DB fill:#4CAF50,stroke:#388E3C,color:#fff
+    style G fill:#9C27B0,stroke:#7B1FA2,color:#fff
 ```
 
 ---
@@ -73,7 +88,11 @@ Create `.env.local` in both `backend/` and `frontend/` (copy from `.env.example`
 | `LIVEKIT_API_SECRET`                   | LiveKit Cloud dashboard                                | Yes      |
 | `MURF_API_KEY`                         | [murf.ai/api/dashboard](https://murf.ai/api/dashboard) | Yes      |
 | `DEEPGRAM_API_KEY`                     | [deepgram.com](https://deepgram.com)                   | Yes      |
-| `GOOGLE_API_KEY` (or `OPENAI_API_KEY`) | Depends on LLM choice                                  | Yes      |
+| `OPENAI_API_KEY`                       | OpenAI dashboard                                       | Yes      |
+| `DISCORD_WEBHOOK_URL`                  | Discord Server Settings                                | Optional |
+| `TWILIO_ACCOUNT_SID`                   | Twilio Console                                         | Optional |
+| `TWILIO_AUTH_TOKEN`                    | Twilio Console                                         | Optional |
+| `TWILIO_PHONE_NUMBER`                  | Twilio Console                                         | Optional |
 
 ### Step 3: Install backend dependencies
 
@@ -136,10 +155,11 @@ Set these environment variables in Railway:
 
 - `MURF_API_KEY`
 - `DEEPGRAM_API_KEY`
-- `GOOGLE_API_KEY` or `OPENAI_API_KEY`
+- `OPENAI_API_KEY`
 - `LIVEKIT_URL`
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
+- `DISCORD_WEBHOOK_URL` (optional)
 
 The backend runs as a long-lived Python process that connects to LiveKit as an agent. Railway handles this well.
 
