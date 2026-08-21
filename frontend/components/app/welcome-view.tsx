@@ -114,7 +114,7 @@ export const WelcomeView = ({
               </div>
 
               <h2 className="relative z-10 mb-6 text-5xl leading-[1.1] font-extrabold tracking-tight text-slate-800 lg:text-[4rem]">
-                I'm Saathi,
+                I&apos;m Saathi,
                 <br />
                 your{' '}
                 <span className="relative whitespace-nowrap text-teal-700">
@@ -220,7 +220,7 @@ export const WelcomeView = ({
                   {hasEnded ? 'Conversation ended' : 'Chat live with Saathi'}
                 </h3>
                 <p className="mb-8 text-[15px] font-medium text-slate-500">
-                  I'm here to listen and help.
+                  I&apos;m here to listen and help.
                 </p>
 
                 <button

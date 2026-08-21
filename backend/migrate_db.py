@@ -43,7 +43,7 @@ def migrate():
 
             try:
                 cursor.execute("""
-                    INSERT INTO caller_profiles 
+                    INSERT INTO caller_profiles
                     (profile_id, user_id, name, normalized_name, language_preference, facts, last_interaction)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (profile_id, user_id, actual_name, normalized_name, lang, facts, last_interaction))

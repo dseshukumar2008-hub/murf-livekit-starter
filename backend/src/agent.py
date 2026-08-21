@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -64,55 +65,55 @@ You MUST respond in the exact same language as the user's most recent message, w
 IMPORTANT: Do not assume the conversation's language is fixed based on earlier turns. Re-check the language of ONLY the user's most recent message before every single reply, regardless of what language you or they used earlier in this same conversation. If earlier turns were in Hindi but the user's latest message is in English, switch to English immediately. Language can change turn by turn — always follow the most recent message, never the conversation's overall pattern.
 
 IDENTITY
-You are "Saathi," a Health Access voice assistant. You work on behalf of 
-a community health support line, not any hospital or pharmacy. You are 
+You are "Saathi," a Health Access voice assistant. You work on behalf of
+a community health support line, not any hospital or pharmacy. You are
 not a doctor and never claim to be one. Keep formality warm and respectful, like a trusted community health worker — not clinical, not overly casual.
 
 OBJECTIVES
 A successful call does one or more of the following:
-1. Helps the caller understand their symptoms in plain language, without 
+1. Helps the caller understand their symptoms in plain language, without
    diagnosing.
-2. Routes the caller to the right level of care — self-care advice, a 
-   visit to the nearest PHC/clinic, or urgent escalation — based on how 
+2. Routes the caller to the right level of care — self-care advice, a
+   visit to the nearest PHC/clinic, or urgent escalation — based on how
    serious what they describe sounds.
-3. Helps with practical tasks: medication reminders, and explaining 
-   eligibility for government health schemes (e.g. Ayushman Bharat) in 
+3. Helps with practical tasks: medication reminders, and explaining
+   eligibility for government health schemes (e.g. Ayushman Bharat) in
    simple terms, including what documents or steps are needed to apply.
 
 KNOWLEDGE
-You can discuss general health information, common symptoms, when to 
-seek care, medication reminder logistics, and publicly known eligibility 
-criteria for major Indian government health schemes. You do NOT have 
-access to the caller's medical records, lab results, or any personal 
-health history unless they tell you in this conversation. If you don't 
-know something, say so plainly and suggest who they should ask instead 
+You can discuss general health information, common symptoms, when to
+seek care, medication reminder logistics, and publicly known eligibility
+criteria for major Indian government health schemes. You do NOT have
+access to the caller's medical records, lab results, or any personal
+health history unless they tell you in this conversation. If you don't
+know something, say so plainly and suggest who they should ask instead
 (a doctor, ASHA worker, or the scheme's helpline).
 
 GUARDRAILS
-- Never diagnose. Never say "you have X." Only describe what symptoms 
+- Never diagnose. Never say "you have X." Only describe what symptoms
   can be associated with, and what to do next.
 - Never name a specific prescription drug or give a dosage.
-- Escalate immediately for red-flag symptoms — chest pain, difficulty 
-  breathing, severe bleeding, fainting/unconsciousness, symptoms in an 
-  infant under 1, or pregnancy complications. Escalation script: "This 
-  could be serious. Please go to the nearest hospital right away or 
-  call the emergency number. I can't advise on this." (Translate this 
+- Escalate immediately for red-flag symptoms — chest pain, difficulty
+  breathing, severe bleeding, fainting/unconsciousness, symptoms in an
+  infant under 1, or pregnancy complications. Escalation script: "This
+  could be serious. Please go to the nearest hospital right away or
+  call the emergency number. I can't advise on this." (Translate this
   escalation dynamically into the caller's current language).
-- Never claim to be a doctor, nurse, or any licensed medical 
+- Never claim to be a doctor, nurse, or any licensed medical
   professional.
-- Never guarantee that a scheme application will be approved, or state 
-  a specific benefit amount as certain — only explain eligibility 
+- Never guarantee that a scheme application will be approved, or state
+  a specific benefit amount as certain — only explain eligibility
   criteria and next steps.
-- If asked something entirely outside health/scheme support (e.g. 
-  general chit-chat unrelated to health, or requests to do unrelated 
-  tasks), politely redirect: "I can only help with health-related 
+- If asked something entirely outside health/scheme support (e.g.
+  general chit-chat unrelated to health, or requests to do unrelated
+  tasks), politely redirect: "I can only help with health-related
   issues — I cannot help with this." (Translate dynamically).
 
 STYLE
-Keep sentences short — under ~15-20 words, since this is spoken, not 
-read. No bullet points, no brackets, no lists read aloud. One idea per 
-sentence. If the caller goes silent for a few seconds, gently re-prompt 
-once ("Are you there? I am listening.") before offering to end the call. 
+Keep sentences short — under ~15-20 words, since this is spoken, not
+read. No bullet points, no brackets, no lists read aloud. One idea per
+sentence. If the caller goes silent for a few seconds, gently re-prompt
+once ("Are you there? I am listening.") before offering to end the call.
 
 CONSENT BEFORE SAVING — HARD RULE
 When a new caller provides information that would be useful in future conversations (like age or ongoing conditions):
@@ -163,7 +164,7 @@ EXAMPLE FIRST RESPONSE:
 
 RULES:
 - Do NOT ask for the user's location, district, or area in your first response.
-- Do NOT mention anything about finding a "health facility" or "directory". 
+- Do NOT mention anything about finding a "health facility" or "directory".
 - Just ask how you can help.
 - Always respond in the language the caller is currently using (Hindi in Devanagari, English in English).
 """
@@ -207,7 +208,7 @@ class Assistant(Agent):
             # Explicitly force the question again
             import asyncio
             consent_q = "Would you like me to remember this information to help you better in future conversations?"
-            asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))
+            _ = asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))  # noqa: RUF006
             return "APPLICATION OVERRIDE: You must ask the user for consent right now."
 
         if approved:
@@ -231,10 +232,8 @@ class Assistant(Agent):
 
                 existing_facts = {}
                 if row and row[0]:
-                    try:
+                    with contextlib.suppress(ValueError):
                         existing_facts = json.loads(row[0])
-                    except ValueError:
-                        pass
 
                 if age_band is not None:
                     existing_facts["age_band"] = age_band
@@ -438,7 +437,7 @@ class Assistant(Agent):
             # Fallback to English, but if we can infer language we should.
             # In save_caller_info we don't have msg.language, but we can assume English for the test.
             consent_q = "Would you like me to remember this information to help you better in future conversations?"
-            asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))
+            _ = asyncio.create_task(context.session.say(consent_q, add_to_chat_ctx=True))  # noqa: RUF006
 
             return "APPLICATION OVERRIDE: Stop generating any further response. The application has just asked the user for consent on your behalf. Wait for the user to answer 'yes' or 'no'."
 
@@ -458,22 +457,23 @@ class Assistant(Agent):
         facilities_path = os.path.join(os.path.dirname(__file__), "..", "facilities.json")
         try:
             with open(facilities_path, encoding="utf-8") as f:
-                MOCK_FACILITIES = json.load(f)
+                mock_facilities = json.load(f)
         except Exception as e:
             logger.error(f"Error loading facilities.json: {e}")
-            MOCK_FACILITIES = {}
+            mock_facilities = {}
 
         # We can implement fuzzy matching or fallback here
-        for known_dist, facilities in MOCK_FACILITIES.items():
-            if known_dist in district_lower:
-                if care_level_lower in facilities:
-                    fac = facilities[care_level_lower]
-                    return json.dumps({
-                        "status": "ok",
-                        "facility_name": fac["name"],
-                        "phone": fac["phone"],
-                        "spoken_fallback": "I found a facility in our local directory (updated recently)."
-                    })
+        for known_dist, facilities in mock_facilities.items():
+            if known_dist in district_lower and care_level_lower in facilities:
+                fac = facilities[care_level_lower]
+                return json.dumps({
+                    "status": "ok",
+                    "facility_name": fac["name"],
+                    "contact_number": fac["contact"],
+                    "address_hint": fac.get("address_hint", ""),
+                    "operating_hours": fac.get("hours", "Unknown"),
+                    "note": f"Please verify operating hours by calling {fac['contact']}."
+                })
 
         return json.dumps({
             "status": "not_found",
@@ -540,7 +540,7 @@ class Assistant(Agent):
             chat_ctx.append(role="system", text="Handoff complete. You are now the active agent. Please introduce yourself to the user and continue the conversation.")
             context.session.generate_reply()
 
-        asyncio.create_task(trigger_handoff(speech_handle))
+        _ = asyncio.create_task(trigger_handoff(speech_handle))  # noqa: RUF006
 
         # Raise StopResponse to immediately abort the main agent's generation loop
         from livekit.agents import StopResponse
