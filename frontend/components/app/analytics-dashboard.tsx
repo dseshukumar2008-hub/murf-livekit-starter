@@ -57,11 +57,7 @@ export function AnalyticsDashboard({ triggerRefresh }: AnalyticsDashboardProps) 
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://murf-livekit-backend-1080622951171.us-central1.run.app/api/analytics', {
-        headers: {
-          'Bypass-Tunnel-Reminder': 'true'
-        }
-      });
+      const response = await fetch('https://murf-livekit-backend-1080622951171.us-central1.run.app/api/analytics');
       if (!response.ok) throw new Error('Failed to fetch');
       const json = await response.json();
       setData(json);
