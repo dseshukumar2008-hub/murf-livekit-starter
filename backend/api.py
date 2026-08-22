@@ -56,4 +56,5 @@ app.router.add_get('/api/analytics', handle_analytics)
 app.router.add_options('/api/analytics', handle_options)
 
 if __name__ == "__main__":
-    aiohttp.web.run_app(app, port=8000)
+    port = int(os.environ.get("PORT", 8080))
+    aiohttp.web.run_app(app, host="0.0.0.0", port=port)
